@@ -237,6 +237,46 @@ export class MatchScene implements FieldView {
   }
 }
 
+/** Builds the 3D view, or throws when that context cannot clear a frame. */
+export function mountScene(canvas: HTMLCanvasElement): MatchScene {
+  const scene = new MatchScene(canvas);
+  const gl = scene.renderer.getContext();
+  const info = glInfo(gl);
+  if (gl.isContextLost() || !canClear(scene, gl)) {
+    scene.renderer.dispose();
+    scene.renderer.forceContextLoss();
+    throw new Error(`WebGL renderer cannot present the stadium (${info || 'context lost'})`);
+  }
+  return scene;
+}
+
+function glInfo(gl: WebGLRenderingContext): string {
+  const debug = gl.getExtension('WEBGL_debug_renderer_info') as { UNMASKED_RENDERER_WEBGL: number } | null;
+  const renderer = debug ? gl.getParameter(debug.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+  const vendor = gl.getParameter(gl.VENDOR);
+  return `${renderer ?? ''} ${vendor ?? ''}`.trim();
+}
+
+function canClear(scene: MatchScene, gl: WebGLRenderingContext): boolean {
+  const previous = scene.scene.background;
+  const mapping = scene.renderer.toneMapping;
+  scene.athletes.group.visible = false;
+  scene.scene.background = new THREE.Color('#ff00aa');
+  scene.renderer.setClearColor('#ff00aa', 1);
+  scene.renderer.toneMapping = THREE.NoToneMapping;
+  scene.camera.position.set(0, 5, 0);
+  scene.camera.lookAt(0, 80, 0);
+  scene.renderer.setSize(16, 16, false);
+  scene.renderer.render(scene.scene, scene.camera);
+  const pixels = new Uint8Array(4);
+  gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+  scene.athletes.group.visible = true;
+  scene.scene.background = previous;
+  scene.renderer.toneMapping = mapping;
+  scene.renderer.toneMappingExposure = 1.05;
+  return pixels[0] > 180 && pixels[2] > 80 && pixels[1] < 80;
+}
+
 function createRenderer(canvas: HTMLCanvasElement): THREE.WebGLRenderer {
   const attempts: THREE.WebGLRendererParameters[] = [
     { canvas, antialias: true, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false },

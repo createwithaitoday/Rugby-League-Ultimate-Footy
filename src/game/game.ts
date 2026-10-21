@@ -1,6 +1,6 @@
 import { createTeams, roleLabel, stadiumById, type StadiumInfo } from '../data/teams';
 import { Pitch2D } from '../render/pitch2d';
-import { MatchScene } from '../render/scene';
+import { mountScene } from '../render/scene';
 import type { CameraMode, FieldView } from '../render/view';
 import { metresToGoal } from '../sim/ai';
 import { Match, ratingOf } from '../sim/match';
@@ -92,10 +92,11 @@ export class Game {
     const view = createView(must('view'));
     this.canvas = view.canvas;
     this.scene = view.view;
-    if (view.flat) {
+    document.body.dataset.pitch = view.flat ? 'flat' : view.view ? '3d' : 'none';
+    if (view.flat && view.view) {
       const note = must('gfx-note');
       note.hidden = false;
-      note.textContent = 'This browser has no WebGL. The match is drawn on a flat pitch, with the same teams, laws, and controls.';
+      note.textContent = 'The 3D stadium cannot be shown in this browser. The match is on a flat pitch, with the same teams, laws, and controls.';
     }
     if (!this.scene) {
       const boot = must('boot');
@@ -1146,7 +1147,7 @@ export class Game {
 
 function createView(canvas: HTMLCanvasElement): { view: FieldView | null; flat: boolean; canvas: HTMLCanvasElement } {
   try {
-    return { view: new MatchScene(canvas), flat: false, canvas };
+    return { view: mountScene(canvas), flat: false, canvas };
   } catch (error) {
     console.warn('WebGL context was not created. Drawing the flat pitch.', error);
     const fresh = document.createElement('canvas');

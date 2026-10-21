@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#071018" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="Original 13-a-side rugby league. Meridian Cup." />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
+    <title>Rugby League: Next Generation</title>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <p id="boot" hidden>WebGL is unavailable in this browser. The match engine can still be tested from the command line.</p>
+
+    <main id="ui">
+      <section id="screen-menu" class="panel">
+        <p class="eyebrow">Meridian Cup</p>
+        <h1>Rugby League<br />Next Generation</h1>
+        <p class="lede">Thirteen a side. Six-tackle sets. Play the ball, kick on the last, and defend your goal line.</p>
+        <div class="stack">
+          <button type="button" data-go="setup">Quick match</button>
+          <button type="button" data-go="training">Training</button>
+          <button type="button" data-go="season">Meridian Cup</button>
+          <button type="button" data-go="career">Career</button>
+          <button type="button" class="ghost" data-go="howto">How to play</button>
+          <button type="button" class="ghost" data-go="settings">Settings</button>
+        </div>
+      </section>
+
+      <section id="screen-setup" class="panel" hidden>
+        <p class="eyebrow">Quick match</p>
+        <h2>Teams and conditions</h2>
+        <label>Your team<select id="setup-home"></select></label>
+        <label>Opposition<select id="setup-away"></select></label>
+        <label>Weather<select id="setup-weather">
+          <option value="clear">Clear</option>
+          <option value="rain">Rain</option>
+          <option value="wind">Cross-wind</option>
+        </select></label>
+        <p id="setup-stadium" class="note"></p>
+        <div class="row">
+          <button type="button" id="setup-start">Kick off</button>
+          <button type="button" class="ghost" data-go="menu">Back</button>
+        </div>
+      </section>
+
+      <section id="screen-training" class="panel" hidden>
+        <p class="eyebrow">Training</p>
+        <h2>One skill at a time</h2>
+        <div class="stack">
+          <button type="button" data-drill="pass">Passing — six catches</button>
+          <button type="button" data-drill="tackle">Tackling — stop the carrier</button>
+          <button type="button" data-drill="goal">Goal kicking — find the posts</button>
+          <button type="button" data-drill="last">Fifth tackle — kick or score</button>
+          <button type="button" class="ghost" data-go="menu">Back</button>
+        </div>
+      </section>
+
+      <section id="screen-howto" class="panel wide" hidden>
+        <p class="eyebrow">Laws in this game</p>
+        <h2>How Meridian Cup football works</h2>
+        <div class="prose">
+          <p>Each side has thirteen players on the field. A set is six tackles. After the sixth tackle the ball is handed over. A play-the-ball follows every completed tackle. The dummy half is usually the hooker.</p>
+          <p>Passes must travel backwards or flat. A forward pass is a scrum to the other team. A knock-on is the same. Kicks are not knock-ons. The kicker cannot regather their own kick immediately.</p>
+          <p>Ground the ball in the in-goal, inside touch and before the dead-ball line, for a try (4). Under an active tackle you must dive or get the ball down. If you are held up, the defence drops out from their goal line.</p>
+          <p>Conversions and penalty goals are worth 2. A field goal is worth 1 and stays in play if it misses. A kick into touch on the full is a penalty. A ball that bounces into touch restarts with a twenty-metre tap. A forty-twenty gives the kicking team the tap.</p>
+          <p>Markers may stand at the ruck. Everyone else must retreat. Encroachment inside the referee’s margin is six again. The clock runs until the hooter, then the half ends at the next stoppage. Extra time is golden point.</p>
+          <p>On attack, the stick moves the ball carrier. Up the screen is always the try line you are attacking, including after half-time. Pass, kick, sprint, and dive are the attacking buttons. On defence you move a defender, tackle, and switch to the next nearest teammate.</p>
+          <p>Keyboard: W A S D or arrows to run, Shift to sprint, J or Space to pass, F to tackle, K to kick, L to dive, Tab to switch, Enter to tap or play the ball, C to change camera, Esc to pause.</p>
+        </div>
+        <button type="button" class="ghost" data-go="menu">Back</button>
+      </section>
+
+      <section id="screen-settings" class="panel wide" hidden>
+        <p class="eyebrow">Match settings</p>
+        <h2>Saved on this device</h2>
+        <div class="grid">
+          <label>Difficulty<select id="set-difficulty">
+            <option value="rookie">Rookie</option>
+            <option value="club">Club</option>
+            <option value="representative">Representative</option>
+          </select></label>
+          <label>Half length<select id="set-half">
+            <option value="5">5 minutes</option>
+            <option value="8">8 minutes</option>
+            <option value="10">10 minutes</option>
+            <option value="20">20 minutes</option>
+            <option value="40">40 minutes</option>
+          </select></label>
+          <label>Clock speed<select id="set-clock">
+            <option value="1">Real time</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+            <option value="6">6×</option>
+            <option value="8">8×</option>
+          </select></label>
+          <label>Graphics<select id="set-quality">
+            <option value="low">Low</option>
+            <option value="medium">Medium</option>
+            <option value="high">High</option>
+          </select></label>
+          <label>Camera<select id="set-camera">
+            <option value="behind">Behind the play</option>
+            <option value="broadcast">Broadcast</option>
+            <option value="tactical">Tactical</option>
+          </select></label>
+          <label>Music <input id="set-music" type="range" min="0" max="100" /></label>
+          <label>Effects <input id="set-effects" type="range" min="0" max="100" /></label>
+          <label>Crowd <input id="set-crowd" type="range" min="0" max="100" /></label>
+        </div>
+        <div class="checks">
+          <label><input id="set-left" type="checkbox" /> Left-handed controls</label>
+          <label><input id="set-assist" type="checkbox" /> Assisted passing</label>
+          <label><input id="set-ten" type="checkbox" /> Show the ten-metre line</label>
+          <label><input id="set-shake" type="checkbox" /> Camera shake on contact</label>
+          <label><input id="set-large" type="checkbox" /> Larger buttons</label>
+          <label><input id="set-fps" type="checkbox" /> Frame rate and AI intent</label>
+          <label><input id="set-cb" type="checkbox" /> Stronger possession contrast</label>
+        </div>
+        <p class="note">Movement stays in real time. Clock speed only advances the match clock. Nothing here is paid, and the game is playable with the volume at zero.</p>
+        <button type="button" class="ghost" data-go="menu">Back</button>
+      </section>
+
+      <section id="screen-season" class="panel wide" hidden>
+        <p class="eyebrow">Meridian Cup</p>
+        <h2>Season</h2>
+        <p id="season-status" class="note"></p>
+        <div id="season-body"></div>
+        <button type="button" class="ghost" data-go="menu">Back</button>
+      </section>
+
+      <section id="screen-career" class="panel wide" hidden>
+        <p class="eyebrow">Career</p>
+        <h2>Your player</h2>
+        <div id="career-body"></div>
+        <button type="button" class="ghost" data-go="menu">Back</button>
+      </section>
+
+      <section id="screen-results" class="panel wide" hidden>
+        <p class="eyebrow">Full time</p>
+        <h2 id="results-title">Result</h2>
+        <div id="results-body"></div>
+        <div class="row">
+          <button type="button" data-go="menu">Menu</button>
+          <button type="button" class="ghost" data-go="season">Season</button>
+        </div>
+      </section>
+    </main>
+
+    <div id="hud" hidden>
+      <header id="scorebug">
+        <div class="team home"><span id="score-home">HBW</span><strong id="score-a">0</strong></div>
+        <div class="mid">
+          <span id="clock">0:00</span>
+          <span id="half">H1</span>
+          <span id="poss">Possession</span>
+        </div>
+        <div class="team away"><strong id="score-b">0</strong><span id="score-away">IRS</span></div>
+      </header>
+      <div id="pips" aria-label="Tackle count"></div>
+      <p id="controlled"></p>
+      <p id="toast" hidden></p>
+      <p id="drill-banner" hidden></p>
+      <p id="fps" hidden></p>
+      <p id="intent" hidden></p>
+      <div id="choice" hidden>
+        <p id="choice-text"></p>
+        <div id="choice-buttons"></div>
+      </div>
+      <div id="meter" hidden>
+        <p>Strike through the posts</p>
+        <div id="meter-track"><div id="meter-sweet"></div><div id="meter-mark"></div></div>
+        <button type="button" id="meter-kick">Strike</button>
+        <button type="button" id="meter-cancel" class="ghost" hidden>Cancel</button>
+      </div>
+      <div id="dock">
+        <div id="stick" aria-label="Move"><div id="knob"></div></div>
+        <div id="actions"></div>
+      </div>
+      <div id="kick-wheel" hidden></div>
+      <button type="button" id="btn-pause" aria-label="Pause">Pause</button>
+    </div>
+
+    <div id="pause" hidden>
+      <section class="panel wide">
+        <p class="eyebrow">Paused</p>
+        <h2>Tactics and bench</h2>
+        <div id="pause-body"></div>
+        <div class="row">
+          <button type="button" id="pause-resume">Resume</button>
+          <button type="button" id="pause-camera">Camera</button>
+          <button type="button" id="pause-quit" class="danger">Abandon match</button>
+        </div>
+      </section>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

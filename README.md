@@ -4,6 +4,8 @@ An original 13-a-side rugby league match. Fictional clubs play in the Meridian C
 
 This is a browser game. It runs on a phone or a desktop browser, including iPhone Safari and Android Chrome, and it can be installed as a home-screen app. It is not a native App Store or Google Play binary, and it does not use Metal or Vulkan. Unity, Unreal, and Godot were not available in this environment, so the match was not built in those editors. The simulation is plain TypeScript and can move to a native engine later without rewriting the laws.
 
+If the browser cannot create a WebGL context, the same match is drawn on a flat pitch instead of a 3D stadium. The laws, teams, and controls stay the same.
+
 ## Play
 
 ```bash

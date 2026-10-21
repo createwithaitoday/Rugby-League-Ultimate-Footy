@@ -1,5 +1,7 @@
 import { createTeams, roleLabel, stadiumById, type StadiumInfo } from '../data/teams';
-import { MatchScene, type CameraMode } from '../render/scene';
+import { Pitch2D } from '../render/pitch2d';
+import { MatchScene } from '../render/scene';
+import type { CameraMode, FieldView } from '../render/view';
 import { metresToGoal } from '../sim/ai';
 import { Match, ratingOf } from '../sim/match';
 import { buildFinals, buildFixtures, buildGrandFinal, recordResult, regularComplete, standings } from '../sim/season';
@@ -61,7 +63,7 @@ export class Game {
   private readonly teams = createTeams();
   private save: SaveData;
   private readonly canvas: HTMLCanvasElement;
-  private readonly scene: MatchScene | null;
+  private readonly scene: FieldView | null;
   private readonly audio = new MatchAudio();
   private readonly controls = new ControlState();
   private match: Match | null = null;
@@ -87,14 +89,19 @@ export class Game {
 
   constructor() {
     this.save = loadSave();
-    this.canvas = must('view');
-    let scene: MatchScene | null = null;
-    try {
-      scene = new MatchScene(this.canvas);
-    } catch {
-      must('boot').hidden = false;
+    const view = createView(must('view'));
+    this.canvas = view.canvas;
+    this.scene = view.view;
+    if (view.flat) {
+      const note = must('gfx-note');
+      note.hidden = false;
+      note.textContent = 'This browser has no WebGL. The match is drawn on a flat pitch, with the same teams, laws, and controls.';
     }
-    this.scene = scene;
+    if (!this.scene) {
+      const boot = must('boot');
+      boot.hidden = false;
+      boot.textContent = 'This browser cannot draw the pitch. The match engine can still be tested from the command line.';
+    }
     this.controls.attach(must('stick'), must('knob'));
     this.bindUi();
     this.applySettings();
@@ -1133,6 +1140,23 @@ export class Game {
       this.fps = this.frames / this.fpsAcc;
       this.frames = 0;
       this.fpsAcc = 0;
+    }
+  }
+}
+
+function createView(canvas: HTMLCanvasElement): { view: FieldView | null; flat: boolean; canvas: HTMLCanvasElement } {
+  try {
+    return { view: new MatchScene(canvas), flat: false, canvas };
+  } catch (error) {
+    console.warn('WebGL context was not created. Drawing the flat pitch.', error);
+    const fresh = document.createElement('canvas');
+    fresh.id = 'view';
+    canvas.replaceWith(fresh);
+    try {
+      return { view: new Pitch2D(fresh), flat: true, canvas: fresh };
+    } catch (flatError) {
+      console.error(flatError);
+      return { view: null, flat: true, canvas: fresh };
     }
   }
 }

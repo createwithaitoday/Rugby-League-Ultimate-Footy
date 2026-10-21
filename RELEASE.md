@@ -29,6 +29,7 @@ Status of this build. Items are marked by what was actually run here, not by wha
 
 ## Known limits
 
+- Browsers without WebGL get a flat pitch instead of the 3D stadium. Laws and controls are the same.
 - Procedural limbs are readable, not broadcast motion capture. Feet can skate and joints are approximate.
 - A dropped ball or a crowded in-goal can still look messy. The safety timer records a fault if play stalls.
 - Reloading the page drops the live match. Season, career, and settings survive.

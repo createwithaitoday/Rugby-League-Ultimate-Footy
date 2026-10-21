@@ -4,10 +4,11 @@ import type { Match } from '../sim/match';
 import type { Action, Snapshot } from '../sim/types';
 import { Athletes } from './athletes';
 import { buildStadium, paintScoreboard, type BuiltStadium } from './stadium';
+import type { CameraMode, FieldView } from './view';
 
-export type CameraMode = 'behind' | 'broadcast' | 'tactical';
+export type { CameraMode };
 
-export class MatchScene {
+export class MatchScene implements FieldView {
   readonly renderer: THREE.WebGLRenderer;
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
@@ -32,7 +33,7 @@ export class MatchScene {
   lost = false;
 
   constructor(canvas: HTMLCanvasElement) {
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+    this.renderer = createRenderer(canvas);
     this.renderer.setPixelRatio(1);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -234,6 +235,22 @@ export class MatchScene {
     tex.colorSpace = THREE.SRGBColorSpace;
     (this.ball.material as THREE.MeshStandardMaterial).map = tex;
   }
+}
+
+function createRenderer(canvas: HTMLCanvasElement): THREE.WebGLRenderer {
+  const attempts: THREE.WebGLRendererParameters[] = [
+    { canvas, antialias: true, powerPreference: 'high-performance', failIfMajorPerformanceCaveat: false },
+    { canvas, antialias: false, powerPreference: 'low-power', failIfMajorPerformanceCaveat: false },
+  ];
+  let last: unknown;
+  for (const options of attempts) {
+    try {
+      return new THREE.WebGLRenderer(options);
+    } catch (error) {
+      last = error;
+    }
+  }
+  throw last instanceof Error ? last : new Error('WebGL is unavailable');
 }
 
 function formatClock(seconds: number): string {

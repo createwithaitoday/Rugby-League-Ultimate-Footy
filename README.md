@@ -1,4 +1,4 @@
-# Rugby League: Next Generation
+# Rugby League: Ultimate Footy
 
 An original 13-a-side rugby league match. Fictional clubs play in the Meridian Cup. The laws live in a deterministic simulation. Three.js draws the stadium, the players, and the ball on top of that simulation.
 

@@ -44,6 +44,26 @@ Status of this build. Items are marked by what was actually run here, not by wha
 
 The Play artifact is a WebView wrapper around this site, package `com.ultimatefooty.meridian`. It is not a Vulkan or Unity port. Build it with `bash scripts/android-bundle.sh` after installing Android SDK platform 36. The upload keystore is not in git.
 
+## Play Console and AdMob
+
+Created 22 October 2026 (Australia/Sydney) on the Vanta Works account.
+
+- Play developer account: Vanta Works, ID `7394745556354570699`
+- App name: Rugby League: Ultimate Footy
+- Package: `com.ultimatefooty.meridian`
+- Play app ID: `4973944636268976391`
+- Listing status: Draft. It is a free game, default language English (United States)
+- Dashboard: https://play.google.com/console/u/0/developers/7394745556354570699/app/4973944636268976391/app-dashboard
+
+AdMob is on the same Google account as that Vanta Works Play developer account. Payment country is Australia. The payment profile is still incomplete, so AdMob will not review the app until that is finished.
+
+- Publisher ID: `pub-5343512610086636`
+- AdMob app: Rugby League: Ultimate Footy, Android
+- AdMob app ID: `ca-app-pub-5343512610086636~3022193589`
+- App settings: https://admob.google.com/v2/apps/3022193589/settings
+
+The Play package is not linked in AdMob yet. AdMob's store search only returns apps that are publicly listed, and this Play app is still a draft. App store details are empty. Use Add store after the listing is public.
+
 ## Before a native store build
 
 - The current store artifact wraps this site in a WebView. A later port can move `src/sim` into another engine without rewriting the laws.

@@ -7,6 +7,7 @@
   --card: rgba(7, 16, 24, 0.9);
   --line: rgba(226, 182, 87, 0.45);
   --danger: #c4524a;
+  --ad-banner: 0px;
   font-family: Barlow, "Segoe UI", sans-serif;
 }
 
@@ -76,6 +77,11 @@ body.playing { touch-action: none; }
 }
 
 .panel.wide { width: min(46rem, calc(100% - 1.25rem)); }
+
+body.ad-banner .panel {
+  max-height: calc(100% - 1.25rem - env(safe-area-inset-bottom) - var(--ad-banner));
+  top: calc(50% - (var(--ad-banner) / 2));
+}
 
 .eyebrow {
   margin: 0 0 0.2rem;

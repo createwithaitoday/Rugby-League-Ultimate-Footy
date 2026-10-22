@@ -4,4 +4,5 @@
     <string name="title_activity_main">Rugby League: Ultimate Footy</string>
     <string name="package_name">com.ultimatefooty.meridian</string>
     <string name="custom_url_scheme">com.ultimatefooty.meridian</string>
+    <string name="admob_app_id">ca-app-pub-5343512610086636~3022193589</string>
 </resources>

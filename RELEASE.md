@@ -60,9 +60,12 @@ AdMob is on the same Google account as that Vanta Works Play developer account. 
 - Publisher ID: `pub-5343512610086636`
 - AdMob app: Rugby League: Ultimate Footy, Android
 - AdMob app ID: `ca-app-pub-5343512610086636~3022193589`
+- Banner ad unit: Menu banner, `ca-app-pub-5343512610086636/1993017095`
 - App settings: https://admob.google.com/v2/apps/3022193589/settings
 
-The Play package is not linked in AdMob yet. AdMob's store search only returns apps that are publicly listed, and this Play app is still a draft. App store details are empty. Use Add store after the listing is public.
+The Android app requests that banner on menus and hides it during a live match. The browser game does not load it. The next signed bundle will request `INTERNET` because of this. The bundle listed under Verified above was built before the banner and does not request that permission.
+
+The Play package is not linked in AdMob yet. AdMob's store search only returns apps that are publicly listed, and this Play app is still a draft. App store details are empty. Use Add store after the listing is public. New units can take up to an hour before they serve a live ad.
 
 ## Before a native store build
 

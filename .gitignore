@@ -4,3 +4,22 @@ dist
 *.local
 .vite
 coverage
+
+# Secrets and signing material
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p8
+*.p12
+*.pfx
+*.keystore
+*.jks
+credentials.json
+service-account*.json
+google-services.json
+
+# Generated store packages
+*.aab
+*.apk

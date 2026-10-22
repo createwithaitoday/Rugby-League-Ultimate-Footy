@@ -9,12 +9,19 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview --host 0.0.0.0 --port 8741",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "android:sync": "npm run build && cap sync android",
+    "android:bundle": "bash scripts/android-bundle.sh"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
     "three": "^0.170.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
+    "@fontsource/barlow": "^5.2.5",
+    "@fontsource/barlow-condensed": "^5.2.5",
     "@types/three": "^0.170.0",
     "typescript": "^5.6.3",
     "vite": "^6.0.6",

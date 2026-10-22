@@ -10,9 +10,6 @@
     <meta name="description" content="Original 13-a-side rugby league. Meridian Cup." />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet" />
     <title>Rugby League: Ultimate Footy</title>
   </head>
   <body>
@@ -32,6 +29,7 @@
           <button type="button" data-go="career">Career</button>
           <button type="button" class="ghost" data-go="howto">How to play</button>
           <button type="button" class="ghost" data-go="settings">Settings</button>
+          <button type="button" class="ghost" data-go="privacy">Privacy policy</button>
         </div>
       </section>
 
@@ -125,7 +123,22 @@
           <label><input id="set-fps" type="checkbox" /> Frame rate and AI intent</label>
           <label><input id="set-cb" type="checkbox" /> Stronger possession contrast</label>
         </div>
-        <p class="note">Movement stays in real time. Clock speed only advances the match clock. Nothing here is paid, and the game is playable with the volume at zero.</p>
+        <p class="note">Movement stays in real time. Clock speed only advances the match clock. Nothing here is paid, and the game is playable with the volume at zero. Settings, season, and career stay on this device.</p>
+        <div class="row">
+          <button type="button" class="ghost" data-go="privacy">Privacy policy</button>
+          <button type="button" class="ghost" data-go="menu">Back</button>
+        </div>
+      </section>
+
+      <section id="screen-privacy" class="panel wide" hidden>
+        <p class="eyebrow">Privacy</p>
+        <h2>What stays on this device</h2>
+        <div class="prose">
+          <p>Rugby League: Ultimate Footy does not ask you to create an account. It does not show ads, sell data, or send your save to a server.</p>
+          <p>Settings, the Meridian Cup season, career totals, match history, and achievements are stored in this app’s private storage under the names <code>meridian-league-save</code> and <code>meridian-league-save-backup</code>. A career name is whatever you type, and it never leaves the device.</p>
+          <p>Clearing the app’s storage, or the browser site data, deletes that save. There is no cloud copy.</p>
+          <p><a id="privacy-public" href="/privacy/index.html">Open the full policy</a> packaged with this app. The same text is in the project for a public web page.</p>
+        </div>
         <button type="button" class="ghost" data-go="menu">Back</button>
       </section>
 

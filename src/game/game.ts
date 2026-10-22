@@ -19,7 +19,7 @@ import {
   type SeasonState,
 } from './save';
 
-type Screen = 'menu' | 'setup' | 'howto' | 'settings' | 'season' | 'career' | 'training' | 'results' | 'match';
+type Screen = 'menu' | 'setup' | 'howto' | 'settings' | 'privacy' | 'season' | 'career' | 'training' | 'results' | 'match';
 type DrillId = 'pass' | 'tackle' | 'goal' | 'last';
 
 interface Drill {
@@ -250,6 +250,7 @@ export class Game {
     else if (screen === 'setup') this.show('setup');
     else if (screen === 'howto') this.show('howto');
     else if (screen === 'settings') this.show('settings');
+    else if (screen === 'privacy') this.show('privacy');
     else if (screen === 'season') this.openSeason();
     else if (screen === 'career') this.openCareer();
     else if (screen === 'training') this.show('training');
@@ -259,7 +260,7 @@ export class Game {
   private show(screen: Screen): void {
     this.screen = screen;
     this.paused = false;
-    for (const id of ['screen-menu', 'screen-setup', 'screen-howto', 'screen-settings', 'screen-season', 'screen-career', 'screen-training', 'screen-results']) {
+    for (const id of ['screen-menu', 'screen-setup', 'screen-howto', 'screen-settings', 'screen-privacy', 'screen-season', 'screen-career', 'screen-training', 'screen-results']) {
       must(id).hidden = id !== `screen-${screen}`;
     }
     const playing = screen === 'match';

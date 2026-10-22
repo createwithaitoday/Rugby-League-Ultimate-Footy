@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Ultimate Footy</string>
+    <string name="title_activity_main">Rugby League: Ultimate Footy</string>
+    <string name="package_name">com.ultimatefooty.meridian</string>
+    <string name="custom_url_scheme">com.ultimatefooty.meridian</string>
+</resources>

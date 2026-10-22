@@ -2,7 +2,7 @@
 
 An original 13-a-side rugby league match. Fictional clubs play in the Meridian Cup. The laws live in a deterministic simulation. Three.js draws the stadium, the players, and the ball on top of that simulation.
 
-This is a browser game. It runs on a phone or a desktop browser, including iPhone Safari and Android Chrome, and it can be installed as a home-screen app. It is not a native App Store or Google Play binary, and it does not use Metal or Vulkan. Unity, Unreal, and Godot were not available in this environment, so the match was not built in those editors. The simulation is plain TypeScript and can move to a native engine later without rewriting the laws.
+This is a browser game. It runs on a phone or a desktop browser, including iPhone Safari and Android Chrome, and it can be installed as a home-screen app. The Android package is that same game inside a WebView: `scripts/android-bundle.sh` produces a signed Android App Bundle with `targetSdkVersion` 36 (Android 16). It does not use Metal or Vulkan, and it is not a Unity, Unreal, or Godot project. The simulation is plain TypeScript.
 
 If the browser cannot create a WebGL context, the same match is drawn on a flat pitch instead of a 3D stadium. The laws, teams, and controls stay the same.
 
@@ -21,6 +21,21 @@ npm run build
 ```
 
 `npm run build` typechecks and writes a static site to `dist/`. `npm run preview` serves that site on the same port.
+
+## Android bundle
+
+The Play package id is `com.ultimatefooty.meridian`. Version name `0.9.0` is version code 1. `android/variables.gradle` sets `compileSdkVersion` and `targetSdkVersion` to 36, and `minSdkVersion` to 24.
+
+```bash
+export ANDROID_HOME="$HOME/android-sdk"   # SDK with platforms;android-36 and build-tools;36.0.0
+# android/keystore.properties and android/upload-keystore.jks are local signing files.
+# They are gitignored. Keep a copy of the upload key; Play updates need the same key.
+bash scripts/android-bundle.sh
+```
+
+The signed bundle is written to `android/app/build/outputs/bundle/release/app-release.aab`. The script refuses to build a release if `android/keystore.properties` is missing, so a bundle from this script is not silently signed with the debug key.
+
+The privacy policy shipped in the app is `public/privacy/index.html`. The same text is in `docs/index.html`. GitHub Pages can serve that folder from the `main` branch (`/docs`). This environment could not sign in to GitHub, so the page is in the project and is not yet a live Pages site.
 
 ## What you can do
 
@@ -53,6 +68,6 @@ Saves use `localStorage` under `meridian-league-save`, with a copy beside it. Ve
 - There is no online multiplayer. “Simulate” is the AI match engine, not a network game.
 - No payments, ads, or random paid rewards.
 - Crowd figures are instanced heads, not individual people.
-- The game has not been tested on a physical iPhone or Android device in this project.
+- The game has not been tested on a physical iPhone or Android handset in this project. The Android package is the browser game in a WebView.
 - Advantage, sin bins, and a video referee that can overturn the simulation are not implemented. The whistle is immediate.
 - Graphics quality settings change pixel ratio and crowd density. They are not a profiled 60 fps guarantee.

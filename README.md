@@ -35,7 +35,7 @@ bash scripts/android-bundle.sh
 
 The signed bundle is written to `android/app/build/outputs/bundle/release/app-release.aab`. The script refuses to build a release if `android/keystore.properties` is missing, so a bundle from this script is not silently signed with the debug key.
 
-The privacy policy shipped in the app is `public/privacy/index.html`. The same text is in `docs/index.html`. GitHub Pages can serve that folder from the `main` branch (`/docs`). This environment could not sign in to GitHub, so the page is in the project and is not yet a live Pages site.
+The privacy policy shipped in the app is `public/privacy/index.html`. The same text is in `docs/index.html`, and GitHub Pages serves it from the `main` branch (`/docs`) at https://createwithaitoday.github.io/Rugby-League-Ultimate-Footy/.
 
 ## What you can do
 

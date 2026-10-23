@@ -7,6 +7,7 @@ import { Match, ratingOf } from '../sim/match';
 import { buildFinals, buildFixtures, buildGrandFinal, recordResult, regularComplete, standings } from '../sim/season';
 import type { Difficulty, HumanInput, KickKind, MatchEvent, Role, Tactic, Team, TeamId, Weather } from '../sim/types';
 import { defaultTactic } from '../sim/types';
+import { bannerForScreen, setMenuBanner } from './ads';
 import { MatchAudio } from './audio';
 import { ControlState } from './input';
 import {
@@ -269,6 +270,7 @@ export class Game {
     must('pause').hidden = true;
     document.body.classList.toggle('playing', playing);
     this.audio.setMenuMusic(!playing);
+    setMenuBanner(bannerForScreen(screen));
   }
 
   private openMenu(): void {

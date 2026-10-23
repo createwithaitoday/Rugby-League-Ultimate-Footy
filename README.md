@@ -1,4 +1,4 @@
-# Rugby League: Ultimate Footy
+# National Rugby League: Ultimate Footy
 
 An original 13-a-side rugby league match. Fictional clubs play in the Meridian Cup. The laws live in a deterministic simulation. Three.js draws the stadium, the players, and the ball on top of that simulation.
 
@@ -24,7 +24,7 @@ npm run build
 
 ## Android bundle
 
-The Play package id is `com.ultimatefooty.meridian`. Version name `0.9.0` is version code 1. `android/variables.gradle` sets `compileSdkVersion` and `targetSdkVersion` to 36, and `minSdkVersion` to 24.
+The Play package id is `com.ultimatefooty.national`. Version name `0.9.0` is version code 1. `android/variables.gradle` sets `compileSdkVersion` and `targetSdkVersion` to 36, and `minSdkVersion` to 24.
 
 ```bash
 export ANDROID_HOME="$HOME/android-sdk"   # SDK with platforms;android-36 and build-tools;36.0.0
@@ -66,7 +66,7 @@ Saves use `localStorage` under `meridian-league-save`, with a copy beside it. Ve
 - Player motion is procedural. It is not motion capture.
 - Audio is synthesised. There is no commentary track. Event text only describes things the simulation emitted.
 - There is no online multiplayer. “Simulate” is the AI match engine, not a network game.
-- No payments, ads, or random paid rewards.
+- No payments or random paid rewards. The Android app can show an AdMob banner on menus and hides it during a live match. The browser game does not load ads.
 - Crowd figures are instanced heads, not individual people.
 - The game has not been tested on a physical iPhone or Android handset in this project. The Android package is the browser game in a WebView.
 - Advantage, sin bins, and a video referee that can overturn the simulation are not implemented. The whistle is immediate.

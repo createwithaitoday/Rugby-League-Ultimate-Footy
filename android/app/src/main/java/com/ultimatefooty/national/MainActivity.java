@@ -1,4 +1,4 @@
-package com.ultimatefooty.meridian;
+package com.ultimatefooty.national;
 
 import com.getcapacitor.BridgeActivity;
 

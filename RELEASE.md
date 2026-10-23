@@ -9,7 +9,8 @@ Status of this build. Items are marked by what was actually run here, not by wha
 - [x] One full AI-versus-AI match completes with 13 players a side and no hard simulation faults
 - [x] Save parser rejects corrupt JSON and unknown versions; ladder records a result once
 - [x] Production bundle (`npm run build`) when the release step below is green
-- [x] Signed Android App Bundle `com.ultimatefooty.meridian` versionCode 1, versionName 0.9.0, `minSdkVersion` 24, `targetSdkVersion` 36, `compileSdkVersion` 36. `jarsigner` reported the bundle verified. The bundle contains the match assets and `privacy/index.html`. It does not request the internet permission.
+- [x] Signed Android App Bundle `com.ultimatefooty.meridian` versionCode 1, versionName 0.9.0, `minSdkVersion` 24, `targetSdkVersion` 36, `compileSdkVersion` 36. `jarsigner` reported the bundle verified. The bundle contains the match assets and `privacy/index.html`. It does not request the internet permission. That bundle was built before the menu banner.
+- [x] Signed Android App Bundle `com.ultimatefooty.national` versionCode 1, versionName 0.9.0, same SDK levels. `jarsigner -verify` reported the bundle verified. The merged manifest requests `INTERNET` and includes the AdMob app id. Play Console accepted it on the Lounge Lizard production draft as version 1 (0.9.0), API 24+, target SDK 36.
 
 ## Not verified
 
@@ -42,18 +43,22 @@ Status of this build. Items are marked by what was actually run here, not by wha
 
 ## Android package
 
-The Play artifact is a WebView wrapper around this site, package `com.ultimatefooty.meridian`. It is not a Vulkan or Unity port. Build it with `bash scripts/android-bundle.sh` after installing Android SDK platform 36. The upload keystore is not in git.
+The Play artifact is a WebView wrapper around this site, package `com.ultimatefooty.national`. It is not a Vulkan or Unity port. Build it with `bash scripts/android-bundle.sh` after installing Android SDK platform 36. The upload keystore is not in git.
 
 ## Play Console and AdMob
 
-Created 22 October 2026 (Australia/Sydney) on the Vanta Works account.
+The store app is on the Lounge Lizard account, not Vanta Works. Created 23 October 2026 (Australia/Sydney).
 
-- Play developer account: Vanta Works, ID `7394745556354570699`
-- App name: Rugby League: Ultimate Footy
-- Package: `com.ultimatefooty.meridian`
-- Play app ID: `4973944636268976391`
-- Listing status: Draft. It is a free game, default language English (United States)
-- Dashboard: https://play.google.com/console/u/0/developers/7394745556354570699/app/4973944636268976391/app-dashboard
+- Play developer account: Lounge Lizard, personal account ID `6155776633763969971`
+- Play app name: National Rugby: Ultimate Footy (the console field stops at 30 characters)
+- In the app, the title is National Rugby League: Ultimate Footy
+- Package: `com.ultimatefooty.national`
+- Play app ID: `4975315416532968875`
+- It is a free game, default language English (United States)
+- Dashboard: https://play.google.com/console/u/2/developers/6155776633763969971/app/4975315416532968875/app-dashboard
+- Production draft contains app bundle version 1 (0.9.0). Rolling it out still depends on the remaining store and policy forms.
+
+An earlier draft on Vanta Works, account `7394745556354570699`, app ID `4973944636268976391`, used package `com.ultimatefooty.meridian`. That package is already registered and cannot be reused. The Vanta Works app was not the one uploaded for this listing.
 
 AdMob is on the same Google account as that Vanta Works Play developer account. Payment country is Australia. The payment profile is still incomplete, so AdMob will not review the app until that is finished.
 
@@ -63,7 +68,7 @@ AdMob is on the same Google account as that Vanta Works Play developer account. 
 - Banner ad unit: Menu banner, `ca-app-pub-5343512610086636/1993017095`
 - App settings: https://admob.google.com/v2/apps/3022193589/settings
 
-The Android app requests that banner on menus and hides it during a live match. The browser game does not load it. The next signed bundle will request `INTERNET` because of this. The bundle listed under Verified above was built before the banner and does not request that permission.
+The Android app requests that banner on menus and hides it during a live match. The browser game does not load it. The `com.ultimatefooty.national` bundle requests `INTERNET`. The older `com.ultimatefooty.meridian` bundle was built before the banner and does not.
 
 The Play package is not linked in AdMob yet. AdMob's store search only returns apps that are publicly listed, and this Play app is still a draft. App store details are empty. Use Add store after the listing is public. New units can take up to an hour before they serve a live ad.
 

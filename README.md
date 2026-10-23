@@ -1,4 +1,4 @@
-# Rugby League: Ultimate Footy
+# National Rugby League: Ultimate Footy
 
 An original 13-a-side rugby league match. Fictional clubs play in the Meridian Cup. The laws live in a deterministic simulation. Three.js draws the stadium, the players, and the ball on top of that simulation.
 
@@ -24,7 +24,7 @@ npm run build
 
 ## Android bundle
 
-The Play package id is `com.ultimatefooty.meridian`. Version name `0.9.0` is version code 1. `android/variables.gradle` sets `compileSdkVersion` and `targetSdkVersion` to 36, and `minSdkVersion` to 24.
+The Play package id is `com.ultimatefooty.national`. Version name `0.9.0` is version code 1. `android/variables.gradle` sets `compileSdkVersion` and `targetSdkVersion` to 36, and `minSdkVersion` to 24.
 
 ```bash
 export ANDROID_HOME="$HOME/android-sdk"   # SDK with platforms;android-36 and build-tools;36.0.0

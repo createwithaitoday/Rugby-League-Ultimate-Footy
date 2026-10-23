@@ -1,6 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 
-/** AdMob application id for com.ultimatefooty.meridian. The manifest reads the same value. */
+/** AdMob application id. The manifest reads the same value. */
 export const ADMOB_APP_ID = 'ca-app-pub-5343512610086636~3022193589';
 
 /** Banner ad unit "Menu banner". Hidden during a live match. */

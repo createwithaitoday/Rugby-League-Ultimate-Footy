@@ -1,8 +1,8 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.ultimatefooty.meridian',
-  appName: 'Ultimate Footy',
+  appId: 'com.ultimatefooty.national',
+  appName: 'National Rugby League: Ultimate Footy',
   webDir: 'dist',
   android: {
     allowMixedContent: false,

@@ -16,7 +16,7 @@ Status of this build. Items are marked by what was actually run here, not by wha
 
 - [ ] Physical iPhone, iPad, or Android handset
 - [ ] Android emulator playthrough. An Android 36 emulator process started in this environment and stayed offline, so the bundle was not installed or played there.
-- [ ] Google Play review or a public store release
+- [ ] Google Play approval or a public store release. The Lounge Lizard production changes were sent for review on 24 October 2026 (Australia/Sydney). Google has not approved them.
 - [ ] App Store binary
 - [ ] Sustained thermal or frame-time profile on mid-range phones
 - [ ] Online multiplayer (not implemented)
@@ -43,7 +43,7 @@ Status of this build. Items are marked by what was actually run here, not by wha
 
 ## Android package
 
-The Play artifact is a WebView wrapper around this site, package `com.ultimatefooty.national`. It is not a Vulkan or Unity port. Build it with `bash scripts/android-bundle.sh` after installing Android SDK platform 36. The upload keystore is not in git.
+The Play artifact is a WebView wrapper around this site, package `com.ultimatefooty.national`. It is not a Vulkan or Unity port. Build it with `bash scripts/android-bundle.sh` after installing Android SDK platform 36. The upload keystore is not in git. A new upload key for this package is on this computer. Back up `android/upload-keystore.jks` and `android/keystore.properties` outside the repo. Play fixes the app signing key when the release is published to an open track.
 
 ## Play Console and AdMob
 
@@ -56,7 +56,10 @@ The store app is on the Lounge Lizard account, not Vanta Works. Created 23 Octob
 - Play app ID: `4975315416532968875`
 - It is a free game, default language English (United States)
 - Dashboard: https://play.google.com/console/u/2/developers/6155776633763969971/app/4975315416532968875/app-dashboard
-- Production draft contains app bundle version 1 (0.9.0). Rolling it out still depends on the remaining store and policy forms.
+- Production release 1 (0.9.0) was saved and sent for review on 24 October 2026 (Australia/Sydney). Publishing overview says the changes are in review, including a full rollout. Managed publishing is off, so an approval publishes the app. The dashboard shows production as active, update status In review, and 177 countries and regions. The review submission also adds rest of world. The only release message left was a non-blocking warning: version code 1 has no deobfuscation file. This WebView app is not obfuscated with R8, so no mapping file was uploaded.
+- The default store listing uses the 30-character Play name. The full description uses National Rugby League: Ultimate Footy and says the clubs are fictional and this is not an official National Rugby League app.
+- The same review includes the privacy policy URL, the ads declaration, the content rating, target audience 13 and older, data safety, the health declaration, and the Sports game category. Data safety says the app collects and shares device or other IDs for advertising, the data is encrypted in transit, there is no account, and there is no deletion request because the developer does not hold that identifier.
+- The submission also records Google Play Games on PC as opted in under form factors.
 
 An earlier draft on Vanta Works, account `7394745556354570699`, app ID `4973944636268976391`, used package `com.ultimatefooty.meridian`. That package is already registered and cannot be reused. The Vanta Works app was not the one uploaded for this listing.
 
@@ -70,7 +73,7 @@ AdMob is on the same Google account as that Vanta Works Play developer account. 
 
 The Android app requests that banner on menus and hides it during a live match. The browser game does not load it. The `com.ultimatefooty.national` bundle requests `INTERNET`. The older `com.ultimatefooty.meridian` bundle was built before the banner and does not.
 
-The Play package is not linked in AdMob yet. AdMob's store search only returns apps that are publicly listed, and this Play app is still a draft. App store details are empty. Use Add store after the listing is public. New units can take up to an hour before they serve a live ad.
+The Play package is not linked in AdMob yet. AdMob's store search only returns apps that are publicly listed, and this Play app is in review, not public. App store details are empty. Use Add store after the listing is public. New units can take up to an hour before they serve a live ad.
 
 ## Before a native store build
 

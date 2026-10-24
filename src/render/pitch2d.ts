@@ -235,23 +235,21 @@ export class Pitch2D implements FieldView {
     ctx.ellipse(1, 2, wid * 0.9, len * 0.35, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = player.primary;
-    roundRect(ctx, -wid / 2, -len * 0.15, wid, len * 0.62, wid * 0.25);
+    roundRect(ctx, -wid * 0.62, -len * 0.22, wid * 1.24, len * 0.7, wid * 0.35);
     ctx.fill();
     ctx.fillStyle = player.secondary;
-    roundRect(ctx, -wid / 2, len * 0.28, wid, len * 0.28, 2);
+    roundRect(ctx, -wid * 0.55, len * 0.22, wid * 0.42, len * 0.42, wid * 0.15);
+    ctx.fill();
+    roundRect(ctx, wid * 0.13, len * 0.22, wid * 0.42, len * 0.42, wid * 0.15);
     ctx.fill();
     ctx.fillStyle = SKIN[player.skin % SKIN.length];
     ctx.beginPath();
-    ctx.arc(0, -len * 0.42, wid * 0.38, 0, Math.PI * 2);
+    ctx.arc(0, -len * 0.48, wid * 0.42, 0, Math.PI * 2);
     ctx.fill();
-    if (player.action === 'pass' || player.action === 'kick' || player.sprint) {
-      ctx.strokeStyle = 'rgba(244,240,230,0.7)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(-wid * 0.2, -len * 0.05);
-      ctx.lineTo(player.action === 'pass' ? wid * 1.3 : wid * 0.2, player.action === 'kick' ? len * 0.9 : -len * 0.55);
-      ctx.stroke();
-    }
+    roundRect(ctx, -wid * 0.95, -len * 0.05, wid * 0.38, len * 0.48, wid * 0.16);
+    ctx.fill();
+    roundRect(ctx, wid * 0.57, -len * 0.05, wid * 0.38, len * 0.48, wid * 0.16);
+    ctx.fill();
     if (controlled) {
       ctx.strokeStyle = '#e2b657';
       ctx.lineWidth = 2;

@@ -43,15 +43,30 @@ export class MatchScene implements FieldView {
     this.camera = new THREE.PerspectiveCamera(42, 1, 0.2, 280);
     this.scene.background = new THREE.Color('#081018');
     this.scene.fog = new THREE.Fog('#081018', 70, 190);
-    this.hemi = new THREE.HemisphereLight('#c5d4e8', '#1d3a22', 0.85);
-    this.sun = new THREE.DirectionalLight('#fff4dd', 1.35);
-    this.sun.position.set(-30, 40, 10);
+    this.hemi = new THREE.HemisphereLight('#d5e6f6', '#2f6a38', 0.72);
+    this.sun = new THREE.DirectionalLight('#fff6e4', 1.85);
+    this.sun.position.set(22, 46, -14);
+    this.sun.castShadow = true;
+    this.sun.shadow.mapSize.set(2048, 2048);
+    this.sun.shadow.bias = -0.00015;
+    this.sun.shadow.normalBias = 0.02;
+    const shadowCam = this.sun.shadow.camera as THREE.OrthographicCamera;
+    shadowCam.left = -48;
+    shadowCam.right = 48;
+    shadowCam.top = 72;
+    shadowCam.bottom = -72;
+    shadowCam.near = 8;
+    shadowCam.far = 130;
+    shadowCam.updateProjectionMatrix();
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene.add(this.hemi, this.sun);
     this.ball = new THREE.Mesh(
-      new THREE.SphereGeometry(0.14, 16, 12),
-      new THREE.MeshStandardMaterial({ color: '#f4f1ea', roughness: 0.45, metalness: 0.05 }),
+      new THREE.SphereGeometry(0.16, 20, 14),
+      new THREE.MeshStandardMaterial({ color: '#f7f4ee', roughness: 0.42, metalness: 0.04 }),
     );
-    this.ball.scale.set(0.85, 0.85, 1.25);
+    this.ball.castShadow = true;
+    this.ball.scale.set(0.78, 0.72, 1.28);
     this.scene.add(this.ball);
     this.decorateBall();
     this.ten = new THREE.Mesh(
@@ -71,6 +86,15 @@ export class MatchScene implements FieldView {
   setQuality(quality: 'low' | 'medium' | 'high'): void {
     const ratio = quality === 'high' ? 1.5 : quality === 'medium' ? 1.15 : 1;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ratio));
+    const shadows = quality !== 'low';
+    this.renderer.shadowMap.enabled = shadows;
+    this.sun.castShadow = shadows;
+    const size = quality === 'high' ? 2048 : 1024;
+    if (this.sun.shadow.mapSize.x !== size) {
+      this.sun.shadow.mapSize.set(size, size);
+      this.sun.shadow.map?.dispose();
+      this.sun.shadow.map = null;
+    }
   }
 
   setStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'high'): void {
@@ -80,18 +104,19 @@ export class MatchScene implements FieldView {
     this.stadiumId = `${info.id}:${quality}`;
     this.scene.add(this.stadium.group);
     const night = info.night;
-    this.scene.background = new THREE.Color(night ? '#070b12' : '#8eb4d4');
-    this.scene.fog = new THREE.Fog(night ? '#070b12' : '#8eb4d4', night ? 80 : 110, night ? 200 : 240);
-    this.hemi.intensity = night ? 0.45 : 0.95;
-    this.hemi.color.set(night ? '#9eb4d0' : '#d5e7f7');
-    this.sun.intensity = night ? 0.55 : 1.45;
-    this.sun.color.set(night ? '#ffe6b0' : '#fff7ea');
-    this.renderer.toneMappingExposure = night ? 1.12 : 1.02;
+    this.scene.background = new THREE.Color(night ? '#070b12' : '#9ec8ea');
+    this.scene.fog = new THREE.Fog(night ? '#101820' : '#9ec8ea', night ? 90 : 140, night ? 230 : 280);
+    this.hemi.intensity = night ? 0.38 : 0.7;
+    this.hemi.color.set(night ? '#b7cbe4' : '#e7f2fb');
+    this.hemi.groundColor.set(night ? '#14341c' : '#3d8a45');
+    this.sun.intensity = night ? 1.45 : 1.9;
+    this.sun.color.set(night ? '#ffe2b0' : '#fff8ee');
+    this.renderer.toneMappingExposure = night ? 1.22 : 1.08;
     for (const spot of this.spots) this.scene.remove(spot);
     this.spots = [];
     if (night) {
       for (const [x, z] of [[-30, -36], [30, -36], [-30, 36], [30, 36]] as const) {
-        const spot = new THREE.SpotLight('#fff1cc', 40, 90, 0.55, 0.45, 1);
+        const spot = new THREE.SpotLight('#fff1cc', 80, 110, 0.62, 0.4, 1);
         spot.position.set(x, 22, z);
         spot.target.position.set(0, 0, z * 0.2);
         this.scene.add(spot, spot.target);
@@ -167,26 +192,26 @@ export class MatchScene implements FieldView {
     const desired = new THREE.Vector3();
     const look = new THREE.Vector3();
     if (menu || match.phase === 'prematch') {
-      this.orbit += dt * 0.15;
-      desired.set(Math.sin(this.orbit) * 42, 16, Math.cos(this.orbit) * 28);
-      look.set(0, 1, 0);
-      this.camera.fov = 38;
-    } else if (this.replaying) {
-      desired.set(ball.x + 16, 6, ball.z - sign * 8);
-      look.set(ball.x, 1, ball.z);
-      this.camera.fov = 32;
-    } else if (mode === 'broadcast') {
-      desired.set(-46, 18, ball.z * 0.92);
-      look.set(ball.x * 0.4, 1, ball.z);
-      this.camera.fov = 30 + Math.min(12, Math.abs(ball.x) * 0.15);
-    } else if (mode === 'tactical') {
-      desired.set(ball.x * 0.25, 52, ball.z - sign * 16);
-      look.set(ball.x * 0.4, 0, ball.z + sign * 10);
+      this.orbit += dt * 0.12;
+      desired.set(Math.sin(this.orbit) * 36, 8.5, Math.cos(this.orbit) * 28);
+      look.set(0, 1.2, 6);
       this.camera.fov = 42;
+    } else if (this.replaying) {
+      desired.set(ball.x + 9, 2.4, ball.z - sign * 7);
+      look.set(ball.x, 0.7, ball.z + sign * 1.5);
+      this.camera.fov = 34;
+    } else if (mode === 'broadcast') {
+      desired.set(ball.x * 0.15 - 28, 9.5, ball.z - sign * 6);
+      look.set(ball.x * 0.55, 1.1, ball.z + sign * 8);
+      this.camera.fov = 36;
+    } else if (mode === 'tactical') {
+      desired.set(ball.x * 0.2, 46, ball.z - sign * 8);
+      look.set(ball.x * 0.35, 0, ball.z + sign * 12);
+      this.camera.fov = 40;
     } else {
-      desired.set(ball.x * 0.28, 12.5, ball.z - sign * 20);
-      look.set(ball.x * 0.45, 0.8, ball.z + sign * 12);
-      this.camera.fov = 46;
+      desired.set(ball.x * 0.22, 8.4, ball.z - sign * 17);
+      look.set(ball.x * 0.35, 1.15, ball.z + sign * 12);
+      this.camera.fov = 52;
     }
     if (this.shake > 0 && !menu) {
       desired.x += Math.sin(this.time * 40) * this.shake;

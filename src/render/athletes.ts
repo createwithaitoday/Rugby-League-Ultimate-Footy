@@ -41,7 +41,13 @@ interface Pose {
 const COUNT = 34;
 
 function capsule(radius: number, length: number): THREE.CapsuleGeometry {
-  return new THREE.CapsuleGeometry(radius, length, 2, 6);
+  return new THREE.CapsuleGeometry(radius, length, 4, 8);
+}
+
+function turned(points: [number, number][]): THREE.BufferGeometry {
+  const geo = new THREE.LatheGeometry(points.map(([y, r]) => new THREE.Vector2(r, y)), 16);
+  geo.computeVertexNormals();
+  return geo;
 }
 
 function poseIdle(): Pose {
@@ -86,7 +92,7 @@ function mirrorPose(pose: Pose): Pose {
 function poseFor(action: Action, travel: number, speed: number, time: number, hasBall: boolean, throwSide: -1 | 1, fatigue: number): Pose {
   const sprint = speed > 6.2 || action === 'sprint';
   if (action === 'dive') {
-    return { lean: 1.25, twist: 0.1, crouch: 0.35, armL: -1.3, armR: -1.3, foreL: 0.2, foreR: 0.2, thighL: -0.4, thighR: 0.7, kneeL: 0.2, kneeR: 0.9, head: 0.2, hop: 0.15 };
+    return { lean: 1.4, twist: 0.2, crouch: 0.62, armL: -2.35, armR: -0.85, foreL: 0.12, foreR: 1.25, thighL: 0.2, thighR: 1.15, kneeL: 0.15, kneeR: 1.15, head: 0.4, hop: -0.28 };
   }
   if (action === 'wrap' || action === 'tackle') {
     return { lean: 0.85, twist: 0, crouch: 0.2, armL: -1.15, armR: -1.15, foreL: 0.9, foreR: 0.9, thighL: 0.7, thighR: -0.2, kneeL: 0.5, kneeR: 0.3, head: 0.15, hop: 0 };
@@ -169,6 +175,11 @@ export class Athletes {
   private readonly shin: THREE.InstancedMesh;
   private readonly boot: THREE.InstancedMesh;
   private readonly eye: THREE.InstancedMesh;
+  private readonly sclera: THREE.InstancedMesh;
+  private readonly nose: THREE.InstancedMesh;
+  private readonly brow: THREE.InstancedMesh;
+  private readonly collar: THREE.InstancedMesh;
+  private readonly finger: THREE.InstancedMesh;
   private readonly neck: THREE.InstancedMesh;
   private readonly shoulder: THREE.InstancedMesh;
   private readonly sleeve: THREE.InstancedMesh;
@@ -184,31 +195,41 @@ export class Athletes {
   private readonly up = new THREE.Quaternion();
 
   constructor() {
-    const skinMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.58, metalness: 0 });
-    const cloth = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.72, metalness: 0.02 });
-    const hairMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.5, metalness: 0.02 });
-    const bootMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.38, metalness: 0.12 });
-    const eyeMat = new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.25 });
-    this.torso = this.make(new THREE.BoxGeometry(0.44, 0.5, 0.24), cloth);
-    this.shorts = this.make(new THREE.BoxGeometry(0.4, 0.24, 0.22), cloth);
-    this.head = this.make(new THREE.SphereGeometry(0.13, 14, 12), skinMat);
-    this.hair = this.make(new THREE.SphereGeometry(0.136, 12, 8), hairMat);
-    this.beard = this.make(new THREE.BoxGeometry(0.12, 0.08, 0.06), hairMat);
-    this.neck = this.make(capsule(0.055, 0.06), skinMat);
-    this.shoulder = this.make(new THREE.SphereGeometry(0.09, 8, 6), cloth, COUNT * 2);
-    this.sleeve = this.make(capsule(0.062, 0.16), cloth, COUNT * 2);
-    this.arm = this.make(capsule(0.05, 0.2), skinMat, COUNT * 2);
-    this.forearm = this.make(capsule(0.045, 0.2), skinMat, COUNT * 2);
-    this.hand = this.make(new THREE.SphereGeometry(0.046, 8, 6), skinMat, COUNT * 2);
-    this.ear = this.make(new THREE.SphereGeometry(0.028, 6, 5), skinMat, COUNT * 2);
-    this.thigh = this.make(capsule(0.082, 0.32), skinMat, COUNT * 2);
-    this.shin = this.make(capsule(0.05, 0.28), skinMat, COUNT * 2);
-    this.sock = this.make(capsule(0.058, 0.14), cloth, COUNT * 2);
-    this.boot = this.make(new THREE.BoxGeometry(0.11, 0.08, 0.24), bootMat, COUNT * 2);
-    this.eye = this.make(new THREE.SphereGeometry(0.018, 8, 6), eyeMat, COUNT * 2);
+    const skinMat = new THREE.MeshPhysicalMaterial({
+      color: '#ffffff', roughness: 0.4, metalness: 0, sheen: 0.35, sheenRoughness: 0.4, sheenColor: new THREE.Color('#f0c2a0'),
+    });
+    const cloth = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.78, metalness: 0.03 });
+    const hairMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.55, metalness: 0.04 });
+    const bootMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.32, metalness: 0.18 });
+    const eyeMat = new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.2 });
+    const white = new THREE.MeshStandardMaterial({ color: '#f4f1ea', roughness: 0.35 });
+    this.torso = this.make(turned([[-0.26, 0.15], [-0.12, 0.19], [0.02, 0.175], [0.14, 0.21], [0.24, 0.2], [0.3, 0.12]]), cloth);
+    this.shorts = this.make(turned([[-0.18, 0.155], [-0.06, 0.2], [0.08, 0.185]]), cloth);
+    this.head = this.make(new THREE.SphereGeometry(0.125, 18, 14), skinMat);
+    this.hair = this.make(new THREE.SphereGeometry(0.132, 14, 10), hairMat);
+    this.beard = this.make(new THREE.SphereGeometry(0.055, 8, 6), hairMat);
+    this.neck = this.make(capsule(0.055, 0.07), skinMat);
+    this.collar = this.make(new THREE.TorusGeometry(0.09, 0.02, 6, 12), cloth);
+    this.shoulder = this.make(new THREE.SphereGeometry(0.1, 10, 8), cloth, COUNT * 2);
+    this.sleeve = this.make(capsule(0.068, 0.16), cloth, COUNT * 2);
+    this.arm = this.make(capsule(0.052, 0.2), skinMat, COUNT * 2);
+    this.forearm = this.make(capsule(0.044, 0.2), skinMat, COUNT * 2);
+    this.hand = this.make(new THREE.SphereGeometry(0.04, 8, 6), skinMat, COUNT * 2);
+    this.finger = this.make(capsule(0.012, 0.045), skinMat, COUNT * 8, false);
+    this.ear = this.make(new THREE.SphereGeometry(0.028, 8, 6), skinMat, COUNT * 2, false);
+    this.nose = this.make(new THREE.SphereGeometry(0.028, 8, 6), skinMat, COUNT, false);
+    this.brow = this.make(new THREE.BoxGeometry(0.09, 0.016, 0.02), hairMat, COUNT, false);
+    this.thigh = this.make(capsule(0.09, 0.28), cloth, COUNT * 2);
+    this.shin = this.make(capsule(0.05, 0.26), skinMat, COUNT * 2);
+    this.sock = this.make(capsule(0.055, 0.16), cloth, COUNT * 2);
+    const boot = new THREE.BoxGeometry(0.12, 0.07, 0.28);
+    boot.translate(0, 0, 0.05);
+    this.boot = this.make(boot, bootMat, COUNT * 2);
+    this.sclera = this.make(new THREE.SphereGeometry(0.02, 8, 6), white, COUNT * 2, false);
+    this.eye = this.make(new THREE.SphereGeometry(0.011, 8, 6), eyeMat, COUNT * 2, false);
     this.shadow = new THREE.InstancedMesh(
       new THREE.CircleGeometry(0.42, 12),
-      new THREE.MeshBasicMaterial({ color: '#041008', transparent: true, opacity: 0.35, depthWrite: false }),
+      new THREE.MeshBasicMaterial({ color: '#041008', transparent: true, opacity: 0.16, depthWrite: false }),
       COUNT,
     );
     this.shadow.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
@@ -216,9 +237,10 @@ export class Athletes {
     for (let i = 0; i < COUNT; i++) {
       const mesh = new THREE.Mesh(
         new THREE.PlaneGeometry(0.28, 0.22),
-        new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }),
+        new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide }),
       );
       mesh.visible = false;
+      mesh.matrixAutoUpdate = false;
       this.number.push(mesh);
       this.group.add(mesh);
       this.poses.push(poseIdle());
@@ -246,8 +268,8 @@ export class Athletes {
       this.arm.setColorAt(i * 2 + 1, skin);
       this.forearm.setColorAt(i * 2, skin);
       this.forearm.setColorAt(i * 2 + 1, skin);
-      this.thigh.setColorAt(i * 2, skin);
-      this.thigh.setColorAt(i * 2 + 1, skin);
+      this.thigh.setColorAt(i * 2, shorts);
+      this.thigh.setColorAt(i * 2 + 1, shorts);
       this.shin.setColorAt(i * 2, skin);
       this.shin.setColorAt(i * 2 + 1, skin);
       this.boot.setColorAt(i * 2, boot);
@@ -263,15 +285,21 @@ export class Athletes {
       this.sleeve.setColorAt(i * 2 + 1, jersey);
       this.sock.setColorAt(i * 2, shorts);
       this.sock.setColorAt(i * 2 + 1, shorts);
-      this.eye.setColorAt(i * 2, new THREE.Color('#111111'));
-      this.eye.setColorAt(i * 2 + 1, new THREE.Color('#111111'));
+      this.eye.setColorAt(i * 2, new THREE.Color('#161616'));
+      this.eye.setColorAt(i * 2 + 1, new THREE.Color('#161616'));
+      this.sclera.setColorAt(i * 2, new THREE.Color('#f6f3ee'));
+      this.sclera.setColorAt(i * 2 + 1, new THREE.Color('#f6f3ee'));
+      this.nose.setColorAt(i, skin);
+      this.brow.setColorAt(i, hair);
+      this.collar.setColorAt(i, jersey);
+      for (let f = 0; f < 8; f++) this.finger.setColorAt(i * 8 + f, skin);
       const mat = this.number[i].material as THREE.MeshBasicMaterial;
       if (mat.map) mat.map.dispose();
       mat.map = numberTexture(p.number, p.secondary);
       mat.needsUpdate = true;
       this.number[i].visible = p.onField;
     });
-    for (const mesh of [this.torso, this.shorts, this.head, this.hair, this.beard, this.neck, this.shoulder, this.sleeve, this.arm, this.forearm, this.hand, this.ear, this.thigh, this.shin, this.sock, this.boot, this.eye]) {
+    for (const mesh of [this.torso, this.shorts, this.head, this.hair, this.beard, this.neck, this.collar, this.shoulder, this.sleeve, this.arm, this.forearm, this.hand, this.finger, this.ear, this.nose, this.brow, this.thigh, this.shin, this.sock, this.boot, this.sclera, this.eye]) {
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
   }
@@ -303,26 +331,31 @@ export class Athletes {
       this.scale.set(s, s, s);
       const root = new THREE.Matrix4().compose(this.position, this.quaternion, this.scale);
       const hip = this.local(root, 0, 0.98 - pose.crouch * 0.25, 0, pose.lean * 0.2, 0, 0);
-      const torso = this.local(hip, 0, 0.28, 0, pose.lean, pose.twist, 0, bulk, 1, 1);
+      const torso = this.local(hip, 0, 0.28, 0, pose.lean, pose.twist, 0, bulk * 1.15, 1.02, 0.62);
       this.torso.setMatrixAt(i, torso);
-      const shorts = this.local(hip, 0, 0.02, 0, 0, 0, 0, bulk, 1, 1);
+      const shorts = this.local(hip, 0, 0.02, 0, 0, 0, 0, bulk * 1.12, 1, 0.78);
       this.shorts.setMatrixAt(i, shorts);
-      const head = this.local(torso, 0, 0.42, 0.02, pose.head, 0, 0);
-      this.neck.setMatrixAt(i, this.local(torso, 0, 0.3, 0.01));
-      this.head.setMatrixAt(i, head);
-      this.shoulder.setMatrixAt(i * 2, this.local(torso, -0.24 * bulk, 0.16, 0, 0, 0, 0, 1.15, 0.8, 1));
-      this.shoulder.setMatrixAt(i * 2 + 1, this.local(torso, 0.24 * bulk, 0.16, 0, 0, 0, 0, 1.15, 0.8, 1));
+      const head = this.local(torso, 0, 0.46, 0.02, pose.head, 0, 0);
+      this.neck.setMatrixAt(i, this.local(torso, 0, 0.32, 0));
+      this.collar.setMatrixAt(i, this.local(torso, 0, 0.28, 0, Math.PI / 2, 0, 0));
+      this.head.setMatrixAt(i, this.local(head, 0, 0.02, 0, 0, 0, 0, 1.02, 1.16, 0.94));
+      this.shoulder.setMatrixAt(i * 2, this.local(torso, -0.22, 0.18, 0, 0, 0, 0, 1.35, 0.9, 1));
+      this.shoulder.setMatrixAt(i * 2 + 1, this.local(torso, 0.22, 0.18, 0, 0, 0, 0, 1.35, 0.9, 1));
       const hairScale = p.look.hairStyle === 4 ? 0.001 : p.look.hairStyle === 3 ? 0.55 : 1;
       const hairY = p.look.hairStyle === 2 ? 0.06 : 0.03;
       this.hair.setMatrixAt(i, this.local(head, 0, hairY, 0, 0, 0, 0, hairScale, p.look.hairStyle === 2 ? 1.25 : 0.72, hairScale));
       const beardScale = p.look.facialHair === 0 ? 0.001 : 1;
       this.beard.setMatrixAt(i, this.local(head, 0, -0.05, 0.1, 0, 0, 0, beardScale, beardScale, beardScale));
-      this.eye.setMatrixAt(i * 2, this.local(head, -0.045, 0.02, 0.1, 0, 0, 0));
-      this.eye.setMatrixAt(i * 2 + 1, this.local(head, 0.045, 0.02, 0.1, 0, 0, 0));
+      this.nose.setMatrixAt(i, this.local(head, 0, -0.02, 0.11, 0, 0, 0, 0.7, 0.85, 1.1));
+      this.brow.setMatrixAt(i, this.local(head, 0, 0.045, 0.1));
+      this.sclera.setMatrixAt(i * 2, this.local(head, -0.042, 0.02, 0.09));
+      this.sclera.setMatrixAt(i * 2 + 1, this.local(head, 0.042, 0.02, 0.09));
+      this.eye.setMatrixAt(i * 2, this.local(head, -0.042, 0.02, 0.108));
+      this.eye.setMatrixAt(i * 2 + 1, this.local(head, 0.042, 0.02, 0.108));
       this.ear.setMatrixAt(i * 2, this.local(head, -0.12, 0, 0, 0, 0, 0, 0.7, 1, 0.55));
       this.ear.setMatrixAt(i * 2 + 1, this.local(head, 0.12, 0, 0, 0, 0, 0, 0.7, 1, 0.55));
-      this.limb(this.arm, i, 0, torso, -0.24 * bulk, 0.16, 0, pose.armL, 0, 0.12);
-      this.limb(this.arm, i, 1, torso, 0.24 * bulk, 0.16, 0, pose.armR, 0, 0.12);
+      this.limb(this.arm, i, 0, torso, -0.24, 0.12, 0, pose.armL, 0, 0.12);
+      this.limb(this.arm, i, 1, torso, 0.24, 0.12, 0, pose.armR, 0, 0.12);
       const armL = this.peek(this.arm, i * 2);
       const armR = this.peek(this.arm, i * 2 + 1);
       this.sleeve.setMatrixAt(i * 2, this.local(armL, 0, 0.02, 0, 0, 0, 0, 1.05, 0.85, 1.05));
@@ -331,8 +364,12 @@ export class Athletes {
       this.limb(this.forearm, i, 1, armR, 0, -0.26, 0, pose.foreR, 0, 0.11);
       const foreL = this.peek(this.forearm, i * 2);
       const foreR = this.peek(this.forearm, i * 2 + 1);
-      this.hand.setMatrixAt(i * 2, this.local(foreL, 0, -0.16, 0.02));
-      this.hand.setMatrixAt(i * 2 + 1, this.local(foreR, 0, -0.16, 0.04));
+      const handL = this.local(foreL, 0, -0.16, 0.02, 0, 0, 0, 1.15, 0.75, 1.35);
+      const handR = this.local(foreR, 0, -0.16, 0.03, 0, 0, 0, 1.15, 0.75, 1.35);
+      this.hand.setMatrixAt(i * 2, handL);
+      this.hand.setMatrixAt(i * 2 + 1, handR);
+      this.placeFingers(handL, i, 0);
+      this.placeFingers(handR, i, 4);
       this.limb(this.thigh, i, 0, hip, -0.1 * bulk, -0.04, 0, pose.thighL, 0, 0.18);
       this.limb(this.thigh, i, 1, hip, 0.1 * bulk, -0.04, 0, pose.thighR, 0, 0.18);
       const thighL = this.peek(this.thigh, i * 2);
@@ -346,9 +383,7 @@ export class Athletes {
       this.boot.setMatrixAt(i * 2, this.local(shinL, 0, -0.28, 0.06, 0, 0, 0));
       this.boot.setMatrixAt(i * 2 + 1, this.local(shinR, 0, -0.28, 0.06, 0, 0, 0));
       this.number[i].visible = p.onField;
-      this.number[i].position.set(x, 1.35 * s, z);
-      this.number[i].quaternion.copy(this.quaternion);
-      this.number[i].translateZ(-0.18 * s);
+      this.number[i].matrix.copy(this.local(torso, 0, 0.04, -0.36, 0, Math.PI, 0, 1.35, 1.6, 1));
       const shadow = new THREE.Matrix4().compose(
         new THREE.Vector3(x, 0.03, z),
         this.up,
@@ -356,15 +391,25 @@ export class Athletes {
       );
       this.shadow.setMatrixAt(i, shadow);
     });
-    for (const mesh of [this.torso, this.shorts, this.head, this.hair, this.beard, this.neck, this.shoulder, this.sleeve, this.arm, this.forearm, this.hand, this.ear, this.thigh, this.shin, this.sock, this.boot, this.eye, this.shadow]) {
+    for (const mesh of [this.torso, this.shorts, this.head, this.hair, this.beard, this.neck, this.collar, this.shoulder, this.sleeve, this.arm, this.forearm, this.hand, this.finger, this.ear, this.nose, this.brow, this.thigh, this.shin, this.sock, this.boot, this.sclera, this.eye, this.shadow]) {
       mesh.instanceMatrix.needsUpdate = true;
     }
   }
 
-  private make(geometry: THREE.BufferGeometry, material: THREE.Material, count = COUNT): THREE.InstancedMesh {
+  private placeFingers(hand: THREE.Matrix4, player: number, base: number): void {
+    for (let finger = 0; finger < 4; finger++) {
+      const spread = (finger - 1.5) * 0.018;
+      this.finger.setMatrixAt(
+        player * 8 + base + finger,
+        this.local(hand, spread, -0.055, 0.02, -0.45, 0, spread * 6, 0.55, 1, 0.55),
+      );
+    }
+  }
+
+  private make(geometry: THREE.BufferGeometry, material: THREE.Material, count = COUNT, shadow = true): THREE.InstancedMesh {
     const mesh = new THREE.InstancedMesh(geometry, material, count);
     mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    mesh.castShadow = false;
+    mesh.castShadow = shadow;
     mesh.receiveShadow = true;
     mesh.frustumCulled = false;
     this.group.add(mesh);
@@ -420,16 +465,14 @@ function numberTexture(n: number, accent: string): THREE.CanvasTexture {
   canvas.height = 96;
   const ctx = canvas.getContext('2d')!;
   ctx.clearRect(0, 0, 128, 96);
-  ctx.fillStyle = 'rgba(0,0,0,0.45)';
-  ctx.fillRect(18, 8, 92, 80);
   ctx.fillStyle = '#f7f4ea';
-  ctx.font = '700 64px Barlow Condensed, Impact, sans-serif';
+  ctx.font = '700 78px Barlow Condensed, Impact, sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(String(n), 64, 50);
+  ctx.lineWidth = 6;
   ctx.strokeStyle = accent;
-  ctx.lineWidth = 4;
-  ctx.strokeRect(18, 8, 92, 80);
+  ctx.strokeText(String(n), 64, 50);
   const texture = new THREE.CanvasTexture(canvas);
   texture.needsUpdate = true;
   return texture;

@@ -63,7 +63,7 @@ Saves use `localStorage` under `meridian-league-save`, with a copy beside it. Ve
 
 ## Honest limits
 
-- Players are original procedural bodies with role proportions, kit colours, and blended poses. They are not scanned athletes or motion capture, and the pass line is a preview of this game's ball step, not a guaranteed catch.
+- Players are original human meshes with kit, numbers, and blended poses under stadium lighting. They are not scanned athletes or footage from another game, and the pass line is a preview of this game's ball step, not a guaranteed catch.
 - Audio is synthesised. There is no commentary track. Event text only describes things the simulation emitted.
 - There is no online multiplayer. “Simulate” is the AI match engine, not a network game.
 - No payments or random paid rewards. The Android app can show an AdMob banner on menus and hides it during a live match. The browser game does not load ads.

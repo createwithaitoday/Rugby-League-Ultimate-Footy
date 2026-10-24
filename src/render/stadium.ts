@@ -24,9 +24,9 @@ export interface BuiltStadium {
 export function buildStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'high'): BuiltStadium {
   const group = new THREE.Group();
   group.name = info.id;
-  const peopleCap = quality === 'low' ? 0 : quality === 'medium' ? 700 : 1400;
+  const peopleCap = quality === 'low' ? 0 : quality === 'medium' ? 1600 : 2800;
 
-  const turf = new THREE.Mesh(new THREE.PlaneGeometry(92, 132), fieldMaterial());
+  const turf = new THREE.Mesh(new THREE.PlaneGeometry(92, 132, 1, 1), fieldMaterial());
   turf.rotation.x = -Math.PI / 2;
   turf.receiveShadow = true;
   group.add(turf);
@@ -48,8 +48,13 @@ export function buildStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'hig
     4200,
   );
   const heads = new THREE.InstancedMesh(
-    new THREE.SphereGeometry(0.16, 6, 5),
-    new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.7 }),
+    new THREE.SphereGeometry(0.16, 7, 6),
+    new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.62 }),
+    Math.max(1, peopleCap),
+  );
+  const bodies = new THREE.InstancedMesh(
+    new THREE.CapsuleGeometry(0.14, 0.22, 2, 5),
+    new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.75 }),
     Math.max(1, peopleCap),
   );
   let seatIndex = 0;
@@ -71,8 +76,10 @@ export function buildStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'hig
     seatIndex += 1;
     if (headIndex < peopleCap && (row * 3 + col) % 5 !== 0) {
       const shirt = shirtTones[(row + col) % shirtTones.length];
-      heads.setMatrixAt(headIndex, new THREE.Matrix4().makeTranslation(x, y + 0.42, z));
-      heads.setColorAt(headIndex, (row + col) % 2 === 0 ? shirt : skinTones[(row + col) % skinTones.length]);
+      heads.setMatrixAt(headIndex, new THREE.Matrix4().makeTranslation(x, y + 0.55, z));
+      heads.setColorAt(headIndex, skinTones[(row + col) % skinTones.length]);
+      bodies.setMatrixAt(headIndex, new THREE.Matrix4().makeTranslation(x, y + 0.22, z));
+      bodies.setColorAt(headIndex, shirt);
       headIndex += 1;
     }
   };
@@ -97,10 +104,12 @@ export function buildStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'hig
   }
   seats.count = seatIndex;
   heads.count = Math.max(1, headIndex);
+  bodies.count = Math.max(1, headIndex);
   if (seats.instanceColor) seats.instanceColor.needsUpdate = true;
   if (heads.instanceColor) heads.instanceColor.needsUpdate = true;
+  if (bodies.instanceColor) bodies.instanceColor.needsUpdate = true;
   group.add(seats);
-  if (peopleCap > 0) group.add(heads);
+  if (peopleCap > 0) group.add(bodies, heads);
 
   const roofMat = new THREE.MeshStandardMaterial({ color: info.bowl, roughness: 0.6, metalness: 0.2, side: THREE.DoubleSide });
   const roof = new THREE.Mesh(new THREE.BoxGeometry(16, 0.4, 78), roofMat);
@@ -111,6 +120,8 @@ export function buildStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'hig
   group.add(roof2);
 
   addBoards(group);
+  addCrowd(group, info.seatA, info.seatB);
+  addRoof(group, info.accent);
   addLights(group, info.night);
   const { meshes, contexts } = addScoreboards(group);
   addTunnel(group);
@@ -177,6 +188,73 @@ function addBoards(group: THREE.Group): void {
   });
 }
 
+function addRoof(group: THREE.Group, accent: string): void {
+  const steel = new THREE.MeshStandardMaterial({ color: accent, metalness: 0.62, roughness: 0.32 });
+  const chord = new THREE.MeshStandardMaterial({ color: '#d5dde4', metalness: 0.7, roughness: 0.28 });
+  for (const x of [-24, 0, 24]) {
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.55, 128), steel);
+    beam.position.set(x, 15.5, 0);
+    group.add(beam);
+  }
+  for (let z = -54; z <= 54; z += 12) {
+    const cross = new THREE.Mesh(new THREE.BoxGeometry(62, 0.22, 0.22), chord);
+    cross.position.set(0, 15.2, z);
+    group.add(cross);
+    const brace = new THREE.Mesh(new THREE.BoxGeometry(0.12, 2.4, 0.12), chord);
+    brace.position.set(-24, 14.4, z);
+    brace.rotation.z = 0.55;
+    group.add(brace);
+    const brace2 = brace.clone();
+    brace2.position.x = 24;
+    brace2.rotation.z = -0.55;
+    group.add(brace2);
+  }
+}
+
+function addCrowd(group: THREE.Group, seatA: string, seatB: string): void {
+  const tex = crowdTexture(seatA, seatB);
+  const mat = new THREE.MeshBasicMaterial({ map: tex });
+  const end = new THREE.Mesh(new THREE.PlaneGeometry(74, 16), mat);
+  end.position.set(0, 8, -63);
+  group.add(end);
+  const end2 = end.clone();
+  end2.position.z = 63;
+  end2.rotation.y = Math.PI;
+  group.add(end2);
+  const side = new THREE.Mesh(new THREE.PlaneGeometry(118, 14), mat);
+  side.position.set(-44, 7.5, 0);
+  side.rotation.y = Math.PI / 2;
+  group.add(side);
+  const side2 = side.clone();
+  side2.position.x = 44;
+  side2.rotation.y = -Math.PI / 2;
+  group.add(side2);
+}
+
+function crowdTexture(seatA: string, seatB: string): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = seatA;
+  ctx.fillRect(0, 0, 1024, 512);
+  const shirts = [seatA, seatB, '#f7f7f2', '#20242a', '#2d62b0', '#c44747', '#e2b657'];
+  const skins = ['#f3d2b5', '#e0ac7e', '#c68642', '#8d5524', '#6b3a22'];
+  for (let row = 0; row < 42; row++) {
+    for (let col = 0; col < 86; col++) {
+      const x = col * 12 + (row % 2) * 5;
+      const y = row * 12;
+      ctx.fillStyle = shirts[(row * 7 + col * 3) % shirts.length];
+      ctx.fillRect(x, y + 5, 7, 7);
+      ctx.fillStyle = skins[(row * 2 + col) % skins.length];
+      ctx.fillRect(x + 1, y + 1, 5, 4);
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 function addLights(group: THREE.Group, night: boolean): void {
   const poleMat = new THREE.MeshStandardMaterial({ color: '#c5ced6', metalness: 0.4, roughness: 0.4 });
   const lampMat = new THREE.MeshStandardMaterial({
@@ -188,9 +266,14 @@ function addLights(group: THREE.Group, night: boolean): void {
     const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, 18, 6), poleMat);
     pole.position.set(x, 9, z);
     group.add(pole);
-    const bank = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.4, 1.2), lampMat);
-    bank.position.set(x, 18, z);
+    const bank = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.35, 1.6), lampMat);
+    bank.position.set(x, 18.2, z);
     group.add(bank);
+    for (const ox of [-2.2, -0.7, 0.7, 2.2]) {
+      const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.28, 0.7), lampMat);
+      lamp.position.set(x + ox, 18.5, z);
+      group.add(lamp);
+    }
   }
 }
 
@@ -232,56 +315,57 @@ function addTunnel(group: THREE.Group): void {
   }
 }
 
-function fieldMaterial(): THREE.ShaderMaterial {
-  return new THREE.ShaderMaterial({
-    uniforms: {},
-    vertexShader: `
-      varying vec3 vWorld;
-      void main() {
-        vec4 world = modelMatrix * vec4(position, 1.0);
-        vWorld = world.xyz;
-        gl_Position = projectionMatrix * viewMatrix * world;
-      }
-    `,
-    fragmentShader: `
-      varying vec3 vWorld;
-      float band(float value, float at, float width) {
-        float d = abs(value - at);
-        return 1.0 - smoothstep(width * 0.35, width, d);
-      }
-      void main() {
-        float stripe = smoothstep(0.35, 0.65, 0.5 + 0.5 * sin(vWorld.z * 0.78));
-        vec3 a = vec3(0.09, 0.38, 0.16);
-        vec3 b = vec3(0.16, 0.48, 0.2);
-        vec3 grass = mix(a, b, stripe);
-        float n = fract(sin(dot(floor(vWorld.xz * 6.0), vec2(127.1, 311.7))) * 43758.5453);
-        grass *= 0.93 + n * 0.1;
-        if (abs(vWorld.z) > 50.0 && abs(vWorld.z) < 58.0) grass = mix(grass, vec3(0.12, 0.42, 0.22), 0.35);
-        float line = 0.0;
-        line = max(line, band(vWorld.z, 0.0, 0.14));
-        line = max(line, band(vWorld.z, 10.0, 0.1));
-        line = max(line, band(vWorld.z, -10.0, 0.1));
-        line = max(line, band(vWorld.z, 20.0, 0.1));
-        line = max(line, band(vWorld.z, -20.0, 0.1));
-        line = max(line, band(vWorld.z, 30.0, 0.1));
-        line = max(line, band(vWorld.z, -30.0, 0.1));
-        line = max(line, band(vWorld.z, 40.0, 0.1));
-        line = max(line, band(vWorld.z, -40.0, 0.1));
-        line = max(line, band(vWorld.z, 50.0, 0.18));
-        line = max(line, band(vWorld.z, -50.0, 0.18));
-        line = max(line, band(vWorld.z, 58.0, 0.1));
-        line = max(line, band(vWorld.z, -58.0, 0.1));
-        line = max(line, band(abs(vWorld.x), 34.0, 0.12));
-        if (abs(vWorld.x) > 34.15 && abs(vWorld.z) < 49.8) line = min(line, band(abs(vWorld.x), 34.0, 0.12));
-        if (abs(vWorld.x) > 34.3 || abs(vWorld.z) > 58.3) {
-          grass = mix(grass, vec3(0.22, 0.2, 0.16), 0.72);
-          line = 0.0;
-        }
-        vec3 col = mix(grass, vec3(0.94, 0.95, 0.93), clamp(line, 0.0, 1.0));
-        gl_FragColor = vec4(col, 1.0);
-      }
-    `,
-  });
+function fieldMaterial(): THREE.MeshStandardMaterial {
+  const width = 1024;
+  const height = 1536;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d')!;
+  const px = (worldX: number) => ((worldX + 46) / 92) * width;
+  const py = (worldZ: number) => ((worldZ + 66) / 132) * height;
+  for (let z = -66; z < 66; z += 4) {
+    const y0 = py(z);
+    const y1 = py(z + 4);
+    const band = Math.floor((z + 66) / 4);
+    ctx.fillStyle = band % 2 === 0 ? '#145c28' : '#67c56e';
+    ctx.fillRect(0, Math.min(y0, y1), width, Math.abs(y1 - y0) + 1);
+  }
+  ctx.fillStyle = '#246c3a';
+  ctx.fillRect(px(-34), Math.min(py(50), py(58)), px(34) - px(-34), Math.abs(py(58) - py(50)));
+  ctx.fillRect(px(-34), Math.min(py(-58), py(-50)), px(34) - px(-34), Math.abs(py(-50) - py(-58)));
+  ctx.fillStyle = '#6d624f';
+  ctx.fillRect(0, 0, px(-34.4), height);
+  ctx.fillRect(px(34.4), 0, width - px(34.4), height);
+  ctx.fillRect(0, 0, width, Math.min(py(-58.4), py(58.4)));
+  ctx.fillRect(0, Math.max(py(-58.4), py(58.4)), width, height);
+  ctx.globalAlpha = 0.18;
+  for (let i = 0; i < 2800; i++) {
+    ctx.fillStyle = i % 2 === 0 ? '#163f1e' : '#b7e2a4';
+    ctx.fillRect((i * 97) % width, (i * 53) % height, 2, 4);
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = '#f4f7f2';
+  const across = (z: number, thick: number) => {
+    const y = py(z);
+    ctx.fillRect(px(-34), y - thick / 2, px(34) - px(-34), thick);
+  };
+  for (const z of [-40, -30, -20, -10, 10, 20, 30, 40]) across(z, 3);
+  across(0, 4);
+  across(50, 5);
+  across(-50, 5);
+  across(58, 3);
+  across(-58, 3);
+  const touch = (x: number) => {
+    const left = px(x);
+    ctx.fillRect(left - 2, Math.min(py(-58), py(58)), 4, Math.abs(py(58) - py(-58)));
+  };
+  touch(-34);
+  touch(34);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92, metalness: 0 });
 }
 
 export function paintScoreboard(

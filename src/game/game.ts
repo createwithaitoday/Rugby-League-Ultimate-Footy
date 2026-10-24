@@ -2,7 +2,8 @@ import { createTeams, roleLabel, stadiumById, type StadiumInfo } from '../data/t
 import { Pitch2D } from '../render/pitch2d';
 import { mountScene } from '../render/scene';
 import type { CameraMode, FieldView } from '../render/view';
-import { metresToGoal } from '../sim/ai';
+import { kickPreview, passPreview } from '../sim/aim';
+import { legalReceivers, metresToGoal } from '../sim/ai';
 import { Match, ratingOf } from '../sim/match';
 import { buildFinals, buildFixtures, buildGrandFinal, recordResult, regularComplete, standings } from '../sim/season';
 import type { Difficulty, HumanInput, KickKind, MatchEvent, Role, Tactic, Team, TeamId, Weather } from '../sim/types';
@@ -78,6 +79,8 @@ export class Game {
   private paused = false;
   private kickOpen = false;
   private aimingField = false;
+  private receiverLock = -1;
+  private armedKick: KickKind = 'punt';
   private actionKey = '';
   private toastUntil = 0;
   private meterPhase = 0;
@@ -150,10 +153,19 @@ export class Game {
     actions.addEventListener('pointerdown', (event) => this.onAction(event, true));
     actions.addEventListener('pointerup', (event) => this.onAction(event, false));
     actions.addEventListener('pointercancel', (event) => this.onAction(event, false));
-    must('kick-wheel').addEventListener('click', (event) => {
+    const wheel = must('kick-wheel');
+    const armKick = (event: Event) => {
+      const button = (event.target as HTMLElement).closest('button');
+      const kind = button?.dataset.kick as KickKind | undefined;
+      if (kind) this.armedKick = kind;
+    };
+    wheel.addEventListener('pointerover', armKick);
+    wheel.addEventListener('pointerdown', armKick);
+    wheel.addEventListener('click', (event) => {
       const button = (event.target as HTMLElement).closest('button');
       const kind = button?.dataset.kick as KickKind | undefined;
       if (!kind) return;
+      this.armedKick = kind;
       if (kind === 'field_goal') this.aimingField = true;
       else this.controls.kick = kind;
       this.kickOpen = false;
@@ -553,6 +565,7 @@ export class Game {
     const playing = this.screen === 'match' && match && !this.resultsShown;
     if (!playing || !match) {
       this.controls.take();
+      if (match) match.aim = null;
       this.scene?.update(dt, match, this.save.settings.camera, false, true);
       this.scene?.render();
       this.audio.update(dt, 0.2);
@@ -566,12 +579,14 @@ export class Game {
         match.releasePresentation();
       }
       if (!this.paused) this.presentHud(match, dt);
+      this.paintAim(match);
       this.scene?.update(dt, match, this.cameraMode(match), this.save.settings.showTen, false);
       this.scene?.render();
       return;
     }
     if (this.drill?.done) {
       this.controls.take();
+      this.paintAim(match);
       this.presentHud(match, dt);
       this.scene?.update(dt, match, this.cameraMode(match), false, false);
       this.scene?.render();
@@ -581,6 +596,7 @@ export class Game {
     this.applyShot(match, shot);
     match.step(dt, this.buildInput(match, shot));
     this.afterStep(match, dt);
+    this.paintAim(match);
     this.presentHud(match, dt);
     this.scene?.update(dt, match, this.cameraMode(match), this.save.settings.showTen, false);
     this.scene?.render();
@@ -649,6 +665,7 @@ export class Game {
       passDirX: moveX,
       passDirZ: moveZ,
       assistedPass: this.save.settings.assistedPass,
+      passTarget: this.receiverLock,
       kick,
       tackle,
       dive: shot.dive,
@@ -779,7 +796,8 @@ export class Game {
     pips.classList.toggle('last', match.tackleCount >= 5);
     pips.innerHTML = Array.from({ length: 6 }, (_, index) => `<i class="${index < match.tackleCount ? 'on' : ''}"></i>`).join('');
     const controlled = match.controlledId === null ? null : match.players.find((player) => player.id === match.controlledId);
-    must('controlled').textContent = controlled ? `${controlled.name} · ${roleLabel(controlled.role)} · ${Math.round(controlled.fatigue * 100)}% fatigue` : '';
+    const aimNote = match.aim?.note ? ` · ${match.aim.note}` : '';
+    must('controlled').textContent = controlled ? `${controlled.name} · ${roleLabel(controlled.role)} · ${Math.round(controlled.fatigue * 100)}% fatigue${aimNote}` : '';
     must('fps').hidden = !this.save.settings.showFps;
     must('intent').hidden = !this.save.settings.showFps;
     if (this.save.settings.showFps) {
@@ -804,6 +822,7 @@ export class Game {
     else if (phase === 'restart' && attack) buttons.push({ act: 'quick', label: 'Tap' });
     else if (attack) {
       buttons.push({ act: 'pass', label: phase === 'tackle' ? 'Offload' : 'Pass' });
+      buttons.push({ act: 'target', label: 'Receiver' });
       buttons.push({ act: 'kick', label: 'Kick' });
       buttons.push({ act: 'sprint', label: 'Sprint' });
       buttons.push({ act: 'dive', label: 'Dive' });
@@ -832,8 +851,10 @@ export class Game {
     else if (down && act === 'dive') this.controls.dive = true;
     else if (down && act === 'switch') this.controls.switchPlayer = true;
     else if (down && act === 'quick') this.controls.quick = true;
+    else if (down && act === 'target' && this.match) this.cycleReceiver(this.match);
     else if (down && act === 'kick') {
       this.kickOpen = !this.kickOpen;
+      this.armedKick = 'punt';
       this.actionKey = '';
     }
     event.preventDefault();
@@ -1070,13 +1091,16 @@ export class Game {
     if (event.code === 'Escape') this.togglePause(!this.paused);
     if (this.screen !== 'match') return;
     if (event.code === 'KeyC') this.cycleCamera();
+    if (event.code === 'KeyQ' && !event.repeat && this.match) this.cycleReceiver(this.match);
     if (event.code === 'KeyK') {
       this.kickOpen = !this.kickOpen;
+      this.armedKick = 'punt';
       this.actionKey = '';
     }
     if (this.kickOpen && event.code.startsWith('Digit')) {
       const index = Number(event.code.slice(5)) - 1;
       const kick = KICKS[index];
+      if (kick) this.armedKick = kick.id;
       if (kick?.id === 'field_goal') this.aimingField = true;
       else if (kick) this.controls.kick = kick.id;
       this.kickOpen = false;
@@ -1086,6 +1110,45 @@ export class Game {
   private cameraMode(match: Match): CameraMode {
     if (match.phase === 'conversion' || match.phase === 'try') return 'broadcast';
     return this.save.settings.camera;
+  }
+
+  private paintAim(match: Match): void {
+    match.aim = null;
+    const human = match.humanTeam;
+    if (human === null || match.possession !== human) return;
+    const carrier = match.carrier();
+    if (!carrier?.hasBall || carrier.team !== human || match.ball.mode !== 'held') return;
+    const phase = match.phase;
+    const live = phase === 'open_play' || phase === 'tackle' || phase === 'kickoff' || phase === 'loose' || phase === 'restart';
+    if (!live) return;
+    const sign = match.attackSign(human);
+    const dirX = this.controls.ax * sign;
+    const dirZ = this.controls.ay * sign;
+    if (this.kickOpen && phase !== 'tackle' && phase !== 'loose' && !this.aimingField) {
+      const power = this.armedKick === 'grubber' ? 0.62 : 0.78;
+      const kickX = Math.abs(dirX) > 0.15 ? dirX : 0;
+      const kickZ = Math.abs(dirZ) > 0.15 ? dirZ : sign;
+      match.aim = kickPreview(match, carrier, this.armedKick, power, kickX, kickZ);
+      return;
+    }
+    if (phase === 'restart') return;
+    const legal = legalReceivers(match, carrier);
+    if (!legal.some((player) => player.id === this.receiverLock)) this.receiverLock = legal[0]?.id ?? -1;
+    match.aim = passPreview(match, carrier, dirX, dirZ, this.receiverLock);
+  }
+
+  private cycleReceiver(match: Match): void {
+    const carrier = match.carrier();
+    if (!carrier || carrier.team !== match.humanTeam || !carrier.hasBall) return;
+    const legal = legalReceivers(match, carrier);
+    if (!legal.length) {
+      this.receiverLock = -1;
+      return;
+    }
+    const index = legal.findIndex((player) => player.id === this.receiverLock);
+    const next = legal[(index + 1) % legal.length];
+    this.receiverLock = next.id;
+    this.paintAim(match);
   }
 
   private canPass(match: Match): boolean {

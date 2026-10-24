@@ -207,6 +207,8 @@ export interface Player {
   errors: number;
   offloads: number;
   lineBreaks: number;
+  /** 1 throws with the right arm, -1 with the left. Visual only. */
+  throwSide: -1 | 1;
 }
 
 export interface Ball {
@@ -307,6 +309,8 @@ export interface HumanInput {
   passDirX: number;
   passDirZ: number;
   assistedPass: boolean;
+  /** Locked teammate. -1 lets the stick and the assist choose. */
+  passTarget: number;
   kick: { kind: KickKind; power: number; dirX: number; dirZ: number } | null;
   tackle: boolean;
   dive: boolean;

@@ -1,4 +1,6 @@
-import { acceleration, chooseReceiver, gradeTackle, maxSpeed, metresToGoal, planCarrier, planTargets } from './ai';
+import { acceleration, chooseReceiver, gradeTackle, legalReceivers, maxSpeed, metresToGoal, planCarrier, planTargets } from './ai';
+import type { AimPreview } from './aim';
+import { kickLaunch, KICK_SPECS, passLaunch } from './flight';
 import type {
   Action,
   Ball,
@@ -56,26 +58,7 @@ export interface MatchResult {
   events: MatchEvent[];
 }
 
-interface KickSpec {
-  angle: number;
-  min: number;
-  max: number;
-  err: number;
-  rest: number;
-}
-
-const KICKS: Record<KickKind, KickSpec> = {
-  punt: { angle: 0.58, min: 16, max: 28, err: 0.16, rest: 0.4 },
-  grubber: { angle: 0.1, min: 13, max: 21, err: 0.07, rest: 0.58 },
-  bomb: { angle: 1.02, min: 15, max: 23, err: 0.12, rest: 0.32 },
-  chip: { angle: 0.52, min: 10, max: 16, err: 0.1, rest: 0.4 },
-  touch_finder: { angle: 0.66, min: 18, max: 30, err: 0.12, rest: 0.38 },
-  kickoff: { angle: 0.78, min: 20, max: 26, err: 0.06, rest: 0.36 },
-  dropout: { angle: 0.72, min: 18, max: 26, err: 0.08, rest: 0.36 },
-  conversion: { angle: 0.5, min: 20, max: 24, err: 0, rest: 0.3 },
-  penalty_goal: { angle: 0.5, min: 20, max: 24, err: 0, rest: 0.3 },
-  field_goal: { angle: 0.48, min: 16, max: 24, err: 0.12, rest: 0.34 },
-};
+const KICKS = KICK_SPECS;
 
 const CLEAR: Weather = { rain: 0, windX: 0, windZ: 0 };
 
@@ -85,6 +68,8 @@ export class Match implements MatchView {
   readonly seed: number;
   readonly stadiumId: string;
   readonly players: Player[] = [];
+  /** Drawn by the view. The step does not read it. */
+  aim: AimPreview | null = null;
   readonly events: MatchEvent[] = [];
   readonly scorers: ScoreEvent[] = [];
   readonly faults: string[] = [];
@@ -316,7 +301,7 @@ export class Match implements MatchView {
     this.syncHeldBall();
   }
 
-  requestPass(id: number, dirX: number, dirZ: number, assisted: boolean): boolean {
+  requestPass(id: number, dirX: number, dirZ: number, assisted: boolean, targetId = -1): boolean {
     const p = this.player(id);
     if (!p.hasBall) return false;
     if (p.action === 'tackled' || this.phase === 'play_the_ball' || this.phase === 'scrum') return false;
@@ -326,7 +311,9 @@ export class Match implements MatchView {
     if (this.phase === 'tackle' && this.phaseTime > 0.4) return false;
     const sign = this.attackSign(p.team);
     const aimingForward = Math.hypot(dirX, dirZ) > 0.2 && dirZ * sign > 0.55 && Math.abs(dirZ) >= Math.abs(dirX) * 0.8;
-    const target = chooseReceiver(this, p, dirX, dirZ, assisted);
+    const locked = targetId >= 0 ? this.players.find((player) => player.id === targetId) : undefined;
+    const lockedLegal = locked ? legalReceivers(this, p).some((player) => player.id === locked.id) : false;
+    const target = locked && lockedLegal && !aimingForward ? locked : chooseReceiver(this, p, dirX, dirZ, assisted);
     if (assisted || !aimingForward) {
       if (!target) return false;
       const lead = 0.25;
@@ -635,9 +622,11 @@ export class Match implements MatchView {
     }
     if (!oneShots || !p) return;
     if (input.pass) {
-      const dx = Math.abs(input.passDirX) + Math.abs(input.passDirZ) > 0.2 ? input.passDirX : input.moveX;
-      const dz = Math.abs(input.passDirX) + Math.abs(input.passDirZ) > 0.2 ? input.passDirZ : input.moveZ;
-      this.requestPass(p.id, dx, dz, input.assistedPass);
+      const aimed = Math.abs(input.passDirX) + Math.abs(input.passDirZ) > 0.2;
+      const dx = aimed ? input.passDirX : input.moveX;
+      const dz = aimed ? input.passDirZ : input.moveZ;
+      const locked = input.passTarget >= 0 && !aimed;
+      this.requestPass(p.id, dx, dz, input.assistedPass || locked, locked ? input.passTarget : -1);
     }
     if (input.offload) this.requestPass(p.id, input.passDirX || input.moveX, input.passDirZ || -this.attackSign(p.team), true);
     if (input.kick && p.hasBall) this.requestKick(p.id, input.kick.kind, input.kick.power, input.kick.dirX, input.kick.dirZ);
@@ -806,9 +795,11 @@ export class Match implements MatchView {
     if (!c || this.ball.mode === 'flight') return;
     const fx = Math.sin(c.facing);
     const fz = Math.cos(c.facing);
-    this.ball.x = c.x + fx * 0.22;
-    this.ball.z = c.z + fz * 0.22;
-    this.ball.y = c.action === 'dive' ? 0.35 : 1.05;
+    const rx = Math.cos(c.facing);
+    const rz = -Math.sin(c.facing);
+    this.ball.x = c.x + fx * 0.32 + rx * 0.22;
+    this.ball.z = c.z + fz * 0.32 + rz * 0.22;
+    this.ball.y = c.action === 'dive' ? 0.42 : c.action === 'kick' ? 0.48 : 1.12;
     this.ball.vx = c.vx;
     this.ball.vz = c.vz;
     this.ball.mode = 'held';
@@ -1674,17 +1665,14 @@ export class Match implements MatchView {
   }
 
   private releasePass(p: Player, tx: number, tz: number, intended: number, forceForward: boolean): void {
-    const dx = tx - p.x;
-    const dz = tz - p.z;
-    const dist = Math.max(1, Math.hypot(dx, dz));
-    const speed = Math.min(18.5, (10.5 + dist * 0.32) * (0.88 + p.attrs.passing * 0.2));
+    const launch = passLaunch(p.x, p.z, p.facing, p.attrs.passing, tx, tz);
     this.clearCarriers();
-    this.ball.x = p.x + Math.sin(p.facing) * 0.3;
-    this.ball.z = p.z + Math.cos(p.facing) * 0.3;
-    this.ball.y = 1.2;
-    this.ball.vx = (dx / dist) * speed;
-    this.ball.vz = (dz / dist) * speed;
-    this.ball.vy = 1.6 + Math.min(2.4, dist * 0.08);
+    this.ball.x = launch.x;
+    this.ball.z = launch.z;
+    this.ball.y = launch.y;
+    this.ball.vx = launch.vx;
+    this.ball.vz = launch.vz;
+    this.ball.vy = launch.vy;
     this.ball.mode = 'flight';
     this.ball.kick = null;
     this.ball.kickTeam = null;
@@ -1701,45 +1689,36 @@ export class Match implements MatchView {
     this.phase = 'in_flight';
     this.phaseTime = 0;
     this.carryId = -1;
+    const dx = tx - p.x;
+    const dz = tz - p.z;
+    const lateral = dx * Math.cos(p.facing) - dz * Math.sin(p.facing);
+    p.throwSide = lateral >= 0 ? 1 : -1;
     this.setAction(p, 'pass', 0.4);
     if (offload) p.offloads += 1;
   }
 
   private releaseKick(p: Player, kind: KickKind, power: number, dirX: number, dirZ: number): void {
     const sign = this.attackSign(p.team);
-    let dx = dirX;
-    let dz = dirZ;
-    if (Math.hypot(dx, dz) < 0.15) {
-      dx = 0;
-      dz = sign;
-    }
-    if (kind === 'touch_finder' && Math.abs(dx) < 0.3) dx = p.x >= 0 ? 0.9 : -0.9;
-    const len = Math.hypot(dx, dz) || 1;
-    dx /= len;
-    dz /= len;
     const spec = KICKS[kind];
     const bias = ((p.id * 13 + this.tackleCount * 5 + this.half) % 9) / 8 - 0.5;
     const err = (1 - p.attrs.kickAccuracy) * spec.err * (0.35 + Math.abs(bias)) * (this.weather.rain > 0 ? 1.15 : 1);
-    const yaw = Math.atan2(dx, dz) + err * Math.sign(bias || 0.2);
-    const speed = (spec.min + (spec.max - spec.min) * power) * (0.8 + 0.28 * p.attrs.kickPower);
+    const yawError = err * Math.sign(bias || 0.2);
     // A defender square in front knocks the kick down. Not a knock-on.
     const charger = this.players.find((d) => {
       if (!d.onField || d.team === p.team) return false;
       const ahead = (d.z - p.z) * sign;
       return ahead > 0.2 && ahead < 1.2 && Math.abs(d.x - p.x) < 0.85;
     });
+    const launch = kickLaunch(p.x, p.z, kind, power, p.attrs.kickPower, dirX, dirZ, yawError, Boolean(charger), sign);
     this.clearCarriers();
-    this.ball.x = p.x;
-    this.ball.z = p.z;
-    this.ball.y = kind === 'grubber' ? 0.32 : 0.85;
-    this.ball.vx = Math.sin(yaw) * speed * Math.cos(spec.angle);
-    this.ball.vz = Math.cos(yaw) * speed * Math.cos(spec.angle);
-    this.ball.vy = speed * Math.sin(spec.angle);
+    this.ball.x = launch.x;
+    this.ball.z = launch.z;
+    this.ball.y = launch.y;
+    this.ball.vx = launch.vx;
+    this.ball.vz = launch.vz;
+    this.ball.vy = launch.vy;
+    this.ball.chargeDown = Boolean(charger);
     if (charger) {
-      this.ball.vx *= 0.2;
-      this.ball.vz = -sign * 2.5;
-      this.ball.vy = 1.4;
-      this.ball.chargeDown = true;
       this.emit('charge_down', charger.team, `Charge-down — ${charger.name}`, charger.id, charger.x, charger.z);
     }
     this.ball.mode = 'flight';
@@ -2055,6 +2034,7 @@ export class Match implements MatchView {
       errors: 0,
       offloads: 0,
       lineBreaks: 0,
+      throwSide: 1,
     };
   }
 
@@ -2239,6 +2219,7 @@ export function emptyInput(): HumanInput {
     passDirX: 0,
     passDirZ: 0,
     assistedPass: true,
+    passTarget: -1,
     kick: null,
     tackle: false,
     dive: false,

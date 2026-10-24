@@ -1,9 +1,26 @@
 import * as THREE from 'three';
-import type { Action, Player } from '../sim/types';
+import type { Action, Player, Role } from '../sim/types';
 
 const SKIN = ['#f3d2b5', '#e0ac7e', '#c68642', '#8d5524', '#6b3a22', '#3d2416'];
 const HAIR = ['#1b140e', '#3a2416', '#6a3e22', '#d7c4a3', '#111111'];
 const BOOTS = ['#141414', '#f4f4f4', '#c4552a', '#1d4e89'];
+
+function physique(role: Role, body: number): { height: number; bulk: number } {
+  const table: Record<Role, [number, number]> = {
+    prop: [1.88, 1.24],
+    hooker: [1.76, 1.04],
+    second_row: [1.94, 1.14],
+    lock: [1.86, 1.1],
+    halfback: [1.74, 0.94],
+    five_eighth: [1.8, 0.98],
+    centre: [1.84, 1.03],
+    wing: [1.83, 0.92],
+    fullback: [1.84, 0.99],
+  };
+  const [height, bulk] = table[role];
+  const nudge = [0.98, 1, 1.05, 1.02][body % 4];
+  return { height, bulk: bulk * nudge };
+}
 
 interface Pose {
   lean: number;
@@ -51,7 +68,22 @@ function runPose(travel: number, sprint: boolean): Pose {
   };
 }
 
-function poseFor(action: Action, travel: number, speed: number, time: number): Pose {
+function mirrorPose(pose: Pose): Pose {
+  return {
+    ...pose,
+    twist: -pose.twist,
+    armL: pose.armR,
+    armR: pose.armL,
+    foreL: pose.foreR,
+    foreR: pose.foreL,
+    thighL: pose.thighR,
+    thighR: pose.thighL,
+    kneeL: pose.kneeR,
+    kneeR: pose.kneeL,
+  };
+}
+
+function poseFor(action: Action, travel: number, speed: number, time: number, hasBall: boolean, throwSide: -1 | 1, fatigue: number): Pose {
   const sprint = speed > 6.2 || action === 'sprint';
   if (action === 'dive') {
     return { lean: 1.25, twist: 0.1, crouch: 0.35, armL: -1.3, armR: -1.3, foreL: 0.2, foreR: 0.2, thighL: -0.4, thighR: 0.7, kneeL: 0.2, kneeR: 0.9, head: 0.2, hop: 0.15 };
@@ -67,10 +99,11 @@ function poseFor(action: Action, travel: number, speed: number, time: number): P
   }
   if (action === 'kick') {
     const swing = Math.sin(Math.min(1, time) * Math.PI);
-    return { lean: 0.15, twist: -0.2, crouch: 0.05, armL: 0.8, armR: -0.4, foreL: 0.4, foreR: 0.3, thighL: 0.3, thighR: -1.1 * swing, kneeL: 0.3, kneeR: 0.4 + swing, head: -0.05, hop: 0 };
+    return { lean: -0.05 + swing * 0.25, twist: -0.25, crouch: 0.04, armL: 0.9, armR: -0.7, foreL: 0.35, foreR: 0.4, thighL: 0.15, thighR: -1.35 * swing, kneeL: 0.25, kneeR: 0.15 + swing * 0.85, head: -0.08, hop: swing * 0.04 };
   }
   if (action === 'pass') {
-    return { lean: 0.12, twist: -0.7, crouch: 0.04, armL: -0.4, armR: -1.2, foreL: 0.5, foreR: 0.25, thighL: 0.25, thighR: -0.15, kneeL: 0.3, kneeR: 0.2, head: -0.1, hop: 0 };
+    const pass = { lean: 0.1, twist: -0.85, crouch: 0.02, armL: -0.2, armR: -1.45, foreL: 0.45, foreR: 0.15, thighL: 0.2, thighR: -0.1, kneeL: 0.25, kneeR: 0.18, head: -0.12, hop: 0 };
+    return throwSide < 0 ? mirrorPose(pass) : pass;
   }
   if (action === 'celebrate') {
     const wave = Math.sin(time * 6) * 0.15;
@@ -88,7 +121,9 @@ function poseFor(action: Action, travel: number, speed: number, time: number): P
   if (speed < 0.35) {
     const idle = poseIdle();
     idle.armL = 0.18 + Math.sin(time * 1.6) * 0.04;
-    idle.armR = 0.18 + Math.sin(time * 1.6 + 1) * 0.04;
+    idle.armR = hasBall ? -0.9 : 0.18 + Math.sin(time * 1.6 + 1) * 0.04;
+    if (hasBall) idle.foreR = 1.1;
+    if (fatigue > 0.72) idle.crouch += 0.06;
     return idle;
   }
   const run = runPose(travel, sprint);
@@ -96,6 +131,17 @@ function poseFor(action: Action, travel: number, speed: number, time: number): P
     run.lean = -0.08;
     run.thighL *= 0.65;
     run.thighR *= 0.65;
+  }
+  if (hasBall) {
+    run.armR = -1.05;
+    run.foreR = 1.15;
+    run.armL = 0.25;
+    run.foreL = 0.7;
+  }
+  if (fatigue > 0.72) {
+    run.crouch += 0.08;
+    run.lean += 0.12;
+    run.hop *= 0.7;
   }
   return run;
 }
@@ -123,6 +169,12 @@ export class Athletes {
   private readonly shin: THREE.InstancedMesh;
   private readonly boot: THREE.InstancedMesh;
   private readonly eye: THREE.InstancedMesh;
+  private readonly neck: THREE.InstancedMesh;
+  private readonly shoulder: THREE.InstancedMesh;
+  private readonly sleeve: THREE.InstancedMesh;
+  private readonly hand: THREE.InstancedMesh;
+  private readonly sock: THREE.InstancedMesh;
+  private readonly ear: THREE.InstancedMesh;
   private readonly number: THREE.Mesh[] = [];
   private readonly shadow: THREE.InstancedMesh;
   private readonly dummy = new THREE.Matrix4();
@@ -132,22 +184,28 @@ export class Athletes {
   private readonly up = new THREE.Quaternion();
 
   constructor() {
-    const skinMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.62, metalness: 0 });
-    const cloth = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.78, metalness: 0.02 });
-    const hairMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.55, metalness: 0.02 });
-    const bootMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.45, metalness: 0.08 });
-    const eyeMat = new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.3 });
-    this.torso = this.make(new THREE.BoxGeometry(0.38, 0.46, 0.2), cloth);
-    this.shorts = this.make(new THREE.BoxGeometry(0.36, 0.22, 0.2), cloth);
-    this.head = this.make(new THREE.SphereGeometry(0.125, 12, 10), skinMat);
-    this.hair = this.make(new THREE.SphereGeometry(0.132, 10, 8), hairMat);
+    const skinMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.58, metalness: 0 });
+    const cloth = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.72, metalness: 0.02 });
+    const hairMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.5, metalness: 0.02 });
+    const bootMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.38, metalness: 0.12 });
+    const eyeMat = new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.25 });
+    this.torso = this.make(new THREE.BoxGeometry(0.44, 0.5, 0.24), cloth);
+    this.shorts = this.make(new THREE.BoxGeometry(0.4, 0.24, 0.22), cloth);
+    this.head = this.make(new THREE.SphereGeometry(0.13, 14, 12), skinMat);
+    this.hair = this.make(new THREE.SphereGeometry(0.136, 12, 8), hairMat);
     this.beard = this.make(new THREE.BoxGeometry(0.12, 0.08, 0.06), hairMat);
-    this.arm = this.make(capsule(0.055, 0.24), skinMat, COUNT * 2);
-    this.forearm = this.make(capsule(0.048, 0.22), skinMat, COUNT * 2);
-    this.thigh = this.make(capsule(0.075, 0.34), skinMat, COUNT * 2);
-    this.shin = this.make(capsule(0.055, 0.34), skinMat, COUNT * 2);
-    this.boot = this.make(new THREE.BoxGeometry(0.1, 0.08, 0.22), bootMat, COUNT * 2);
-    this.eye = this.make(new THREE.SphereGeometry(0.018, 6, 6), eyeMat, COUNT * 2);
+    this.neck = this.make(capsule(0.055, 0.06), skinMat);
+    this.shoulder = this.make(new THREE.SphereGeometry(0.09, 8, 6), cloth, COUNT * 2);
+    this.sleeve = this.make(capsule(0.062, 0.16), cloth, COUNT * 2);
+    this.arm = this.make(capsule(0.05, 0.2), skinMat, COUNT * 2);
+    this.forearm = this.make(capsule(0.045, 0.2), skinMat, COUNT * 2);
+    this.hand = this.make(new THREE.SphereGeometry(0.046, 8, 6), skinMat, COUNT * 2);
+    this.ear = this.make(new THREE.SphereGeometry(0.028, 6, 5), skinMat, COUNT * 2);
+    this.thigh = this.make(capsule(0.082, 0.32), skinMat, COUNT * 2);
+    this.shin = this.make(capsule(0.05, 0.28), skinMat, COUNT * 2);
+    this.sock = this.make(capsule(0.058, 0.14), cloth, COUNT * 2);
+    this.boot = this.make(new THREE.BoxGeometry(0.11, 0.08, 0.24), bootMat, COUNT * 2);
+    this.eye = this.make(new THREE.SphereGeometry(0.018, 8, 6), eyeMat, COUNT * 2);
     this.shadow = new THREE.InstancedMesh(
       new THREE.CircleGeometry(0.42, 12),
       new THREE.MeshBasicMaterial({ color: '#041008', transparent: true, opacity: 0.35, depthWrite: false }),
@@ -194,6 +252,17 @@ export class Athletes {
       this.shin.setColorAt(i * 2 + 1, skin);
       this.boot.setColorAt(i * 2, boot);
       this.boot.setColorAt(i * 2 + 1, boot);
+      this.neck.setColorAt(i, skin);
+      this.hand.setColorAt(i * 2, skin);
+      this.hand.setColorAt(i * 2 + 1, skin);
+      this.ear.setColorAt(i * 2, skin);
+      this.ear.setColorAt(i * 2 + 1, skin);
+      this.shoulder.setColorAt(i * 2, jersey);
+      this.shoulder.setColorAt(i * 2 + 1, jersey);
+      this.sleeve.setColorAt(i * 2, jersey);
+      this.sleeve.setColorAt(i * 2 + 1, jersey);
+      this.sock.setColorAt(i * 2, shorts);
+      this.sock.setColorAt(i * 2 + 1, shorts);
       this.eye.setColorAt(i * 2, new THREE.Color('#111111'));
       this.eye.setColorAt(i * 2 + 1, new THREE.Color('#111111'));
       const mat = this.number[i].material as THREE.MeshBasicMaterial;
@@ -202,7 +271,7 @@ export class Athletes {
       mat.needsUpdate = true;
       this.number[i].visible = p.onField;
     });
-    for (const mesh of [this.torso, this.shorts, this.head, this.hair, this.beard, this.arm, this.forearm, this.thigh, this.shin, this.boot, this.eye]) {
+    for (const mesh of [this.torso, this.shorts, this.head, this.hair, this.beard, this.neck, this.shoulder, this.sleeve, this.arm, this.forearm, this.hand, this.ear, this.thigh, this.shin, this.sock, this.boot, this.eye]) {
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
   }
@@ -222,11 +291,12 @@ export class Athletes {
       const facing = o?.facing ?? p.facing;
       const action = o?.action ?? p.action;
       const speed = Math.hypot(p.vx, p.vz);
-      const target = poseFor(action, p.travel, speed, time);
+      const target = poseFor(action, p.travel, speed, time, p.hasBall, p.throwSide, p.fatigue);
       this.poses[i] = lerpPose(this.poses[i], target, overrides ? 1 : blend);
       const pose = this.poses[i];
-      const height = [1.78, 1.86, 1.84, 1.94][p.look.body % 4];
-      const bulk = [0.94, 1, 1.14, 1.05][p.look.body % 4];
+      const build = physique(p.role, p.look.body);
+      const height = build.height;
+      const bulk = build.bulk;
       const s = height / 1.86;
       this.position.set(x, pose.hop, z);
       this.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), facing);
@@ -237,8 +307,11 @@ export class Athletes {
       this.torso.setMatrixAt(i, torso);
       const shorts = this.local(hip, 0, 0.02, 0, 0, 0, 0, bulk, 1, 1);
       this.shorts.setMatrixAt(i, shorts);
-      const head = this.local(torso, 0, 0.36, 0.02, pose.head, 0, 0);
+      const head = this.local(torso, 0, 0.42, 0.02, pose.head, 0, 0);
+      this.neck.setMatrixAt(i, this.local(torso, 0, 0.3, 0.01));
       this.head.setMatrixAt(i, head);
+      this.shoulder.setMatrixAt(i * 2, this.local(torso, -0.24 * bulk, 0.16, 0, 0, 0, 0, 1.15, 0.8, 1));
+      this.shoulder.setMatrixAt(i * 2 + 1, this.local(torso, 0.24 * bulk, 0.16, 0, 0, 0, 0, 1.15, 0.8, 1));
       const hairScale = p.look.hairStyle === 4 ? 0.001 : p.look.hairStyle === 3 ? 0.55 : 1;
       const hairY = p.look.hairStyle === 2 ? 0.06 : 0.03;
       this.hair.setMatrixAt(i, this.local(head, 0, hairY, 0, 0, 0, 0, hairScale, p.look.hairStyle === 2 ? 1.25 : 0.72, hairScale));
@@ -246,12 +319,20 @@ export class Athletes {
       this.beard.setMatrixAt(i, this.local(head, 0, -0.05, 0.1, 0, 0, 0, beardScale, beardScale, beardScale));
       this.eye.setMatrixAt(i * 2, this.local(head, -0.045, 0.02, 0.1, 0, 0, 0));
       this.eye.setMatrixAt(i * 2 + 1, this.local(head, 0.045, 0.02, 0.1, 0, 0, 0));
+      this.ear.setMatrixAt(i * 2, this.local(head, -0.12, 0, 0, 0, 0, 0, 0.7, 1, 0.55));
+      this.ear.setMatrixAt(i * 2 + 1, this.local(head, 0.12, 0, 0, 0, 0, 0, 0.7, 1, 0.55));
       this.limb(this.arm, i, 0, torso, -0.24 * bulk, 0.16, 0, pose.armL, 0, 0.12);
       this.limb(this.arm, i, 1, torso, 0.24 * bulk, 0.16, 0, pose.armR, 0, 0.12);
       const armL = this.peek(this.arm, i * 2);
       const armR = this.peek(this.arm, i * 2 + 1);
+      this.sleeve.setMatrixAt(i * 2, this.local(armL, 0, 0.02, 0, 0, 0, 0, 1.05, 0.85, 1.05));
+      this.sleeve.setMatrixAt(i * 2 + 1, this.local(armR, 0, 0.02, 0, 0, 0, 0, 1.05, 0.85, 1.05));
       this.limb(this.forearm, i, 0, armL, 0, -0.26, 0, pose.foreL, 0, 0.11);
       this.limb(this.forearm, i, 1, armR, 0, -0.26, 0, pose.foreR, 0, 0.11);
+      const foreL = this.peek(this.forearm, i * 2);
+      const foreR = this.peek(this.forearm, i * 2 + 1);
+      this.hand.setMatrixAt(i * 2, this.local(foreL, 0, -0.16, 0.02));
+      this.hand.setMatrixAt(i * 2 + 1, this.local(foreR, 0, -0.16, 0.04));
       this.limb(this.thigh, i, 0, hip, -0.1 * bulk, -0.04, 0, pose.thighL, 0, 0.18);
       this.limb(this.thigh, i, 1, hip, 0.1 * bulk, -0.04, 0, pose.thighR, 0, 0.18);
       const thighL = this.peek(this.thigh, i * 2);
@@ -260,8 +341,10 @@ export class Athletes {
       this.limb(this.shin, i, 1, thighR, 0, -0.36, 0, pose.kneeR, 0, 0.17);
       const shinL = this.peek(this.shin, i * 2);
       const shinR = this.peek(this.shin, i * 2 + 1);
-      this.boot.setMatrixAt(i * 2, this.local(shinL, 0, -0.24, 0.04, 0, 0, 0));
-      this.boot.setMatrixAt(i * 2 + 1, this.local(shinR, 0, -0.24, 0.04, 0, 0, 0));
+      this.sock.setMatrixAt(i * 2, this.local(shinL, 0, -0.16, 0));
+      this.sock.setMatrixAt(i * 2 + 1, this.local(shinR, 0, -0.16, 0));
+      this.boot.setMatrixAt(i * 2, this.local(shinL, 0, -0.28, 0.06, 0, 0, 0));
+      this.boot.setMatrixAt(i * 2 + 1, this.local(shinR, 0, -0.28, 0.06, 0, 0, 0));
       this.number[i].visible = p.onField;
       this.number[i].position.set(x, 1.35 * s, z);
       this.number[i].quaternion.copy(this.quaternion);
@@ -273,7 +356,7 @@ export class Athletes {
       );
       this.shadow.setMatrixAt(i, shadow);
     });
-    for (const mesh of [this.torso, this.shorts, this.head, this.hair, this.beard, this.arm, this.forearm, this.thigh, this.shin, this.boot, this.eye, this.shadow]) {
+    for (const mesh of [this.torso, this.shorts, this.head, this.hair, this.beard, this.neck, this.shoulder, this.sleeve, this.arm, this.forearm, this.hand, this.ear, this.thigh, this.shin, this.sock, this.boot, this.eye, this.shadow]) {
       mesh.instanceMatrix.needsUpdate = true;
     }
   }

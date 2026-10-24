@@ -1,4 +1,5 @@
 import type { StadiumInfo } from '../data/teams';
+import type { AimPreview } from '../sim/aim';
 import type { Match } from '../sim/match';
 import type { Action, Snapshot } from '../sim/types';
 import type { CameraMode, FieldView } from './view';
@@ -129,6 +130,7 @@ export class Pitch2D implements FieldView {
     if (frame.showTen) this.tenLine(ctx, cam, frame.tenZ);
     const order = frame.players.filter((player) => player.onField).sort((a, b) => cam.depth(a) - cam.depth(b));
     for (const player of order) this.player(ctx, cam, player, player.id === frame.controlledId);
+    this.guide(ctx, cam, frame.match.aim);
     this.ball(ctx, cam, frame.ball);
     if (this.stadium && (frame.menu || frame.mode === 'tactical')) {
       ctx.fillStyle = 'rgba(244,240,230,0.9)';
@@ -269,6 +271,49 @@ export class Pitch2D implements FieldView {
       ctx.fillText(String(player.number), 0, len * 0.12);
     }
     ctx.restore();
+  }
+
+  private guide(ctx: CanvasRenderingContext2D, cam: Cam, aim: AimPreview | null): void {
+    if (!aim || aim.points.length < 2) return;
+    const risk = aim.risk > 0.66 ? '#e06a5c' : aim.risk > 0.35 ? '#e2b657' : '#d7efe2';
+    const strokePath = (points: { x: number; y: number; z: number }[], width: number, alpha: number) => {
+      ctx.beginPath();
+      points.forEach((point, index) => {
+        const projected = cam.project(point.x, point.z);
+        const lift = point.y * cam.scale * 0.35;
+        if (index === 0) ctx.moveTo(projected.x, projected.y - lift);
+        else ctx.lineTo(projected.x, projected.y - lift);
+      });
+      ctx.strokeStyle = risk;
+      ctx.globalAlpha = alpha;
+      ctx.lineWidth = width;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    };
+    if (aim.spread.length > 1) strokePath(aim.spread, 1.5, 0.35);
+    strokePath(aim.points, 2.5, 0.9);
+    const land = cam.project(aim.landing.x, aim.landing.z);
+    ctx.strokeStyle = '#e2b657';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(land.x, land.y, 7, 0, Math.PI * 2);
+    ctx.stroke();
+    if (aim.catch) {
+      const zone = cam.project(aim.catch.x, aim.catch.z);
+      ctx.strokeStyle = risk;
+      ctx.beginPath();
+      ctx.arc(zone.x, zone.y, Math.max(8, aim.catch.radius * cam.scale * 0.35), 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    if (aim.receiverId !== null) {
+      const player = this.frame?.players.find((item) => item.id === aim.receiverId);
+      if (player) {
+        const mark = cam.project(player.x, player.z);
+        ctx.strokeStyle = '#7dcea0';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(mark.x - 10, mark.y - 16, 20, 28);
+      }
+    }
   }
 
   private ball(ctx: CanvasRenderingContext2D, cam: Cam, ball: { x: number; y: number; z: number }): void {

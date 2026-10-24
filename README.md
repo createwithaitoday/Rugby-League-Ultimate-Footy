@@ -49,7 +49,7 @@ The privacy policy shipped in the app is `public/privacy/index.html`. The same t
 - A career player with saved attributes, match totals, and a few achievements.
 - Settings for difficulty, half length, clock speed, graphics, camera, handedness, and volume. Movement stays in real time. Clock speed only moves the match clock.
 
-Keyboard: W A S D or arrows, Shift sprint, J or Space pass, F tackle, K kick, L dive, Tab switch, Enter tap, C camera, Esc pause.
+Keyboard: W A S D or arrows, Shift sprint, J or Space pass, Q next receiver, F tackle, K kick, L dive, Tab switch, Enter tap, C camera, Esc pause. With the ball, the pitch shows the pass the simulator would release. A hard push toward the attack line still sends the ball into space. Open the kick menu to preview that kick, including wind, touch, and a charge-down.
 
 ## Layout
 
@@ -63,7 +63,7 @@ Saves use `localStorage` under `meridian-league-save`, with a copy beside it. Ve
 
 ## Honest limits
 
-- Player motion is procedural. It is not motion capture.
+- Players are original procedural bodies with role proportions, kit colours, and blended poses. They are not scanned athletes or motion capture, and the pass line is a preview of this game's ball step, not a guaranteed catch.
 - Audio is synthesised. There is no commentary track. Event text only describes things the simulation emitted.
 - There is no online multiplayer. “Simulate” is the AI match engine, not a network game.
 - No payments or random paid rewards. The Android app can show an AdMob banner on menus and hides it during a live match. The browser game does not load ads.

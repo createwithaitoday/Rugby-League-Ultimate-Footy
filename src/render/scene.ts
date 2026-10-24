@@ -3,6 +3,7 @@ import type { StadiumInfo } from '../data/teams';
 import type { Match } from '../sim/match';
 import type { Action, Snapshot } from '../sim/types';
 import { Athletes } from './athletes';
+import { AimGuide } from './guide';
 import { buildStadium, paintScoreboard, type BuiltStadium } from './stadium';
 import type { CameraMode, FieldView } from './view';
 
@@ -13,6 +14,7 @@ export class MatchScene implements FieldView {
   readonly scene = new THREE.Scene();
   readonly camera: THREE.PerspectiveCamera;
   readonly athletes = new Athletes();
+  private readonly guide = new AimGuide();
   private stadium: BuiltStadium | null = null;
   private stadiumId = '';
   private ball: THREE.Mesh;
@@ -59,7 +61,7 @@ export class MatchScene implements FieldView {
     this.ten.rotation.x = -Math.PI / 2;
     this.ten.position.y = 0.04;
     this.ten.visible = false;
-    this.scene.add(this.ten, this.athletes.group);
+    this.scene.add(this.ten, this.athletes.group, this.guide.group);
     canvas.addEventListener('webglcontextlost', (event) => {
       event.preventDefault();
       this.lost = true;
@@ -135,6 +137,7 @@ export class MatchScene implements FieldView {
     }
     this.athletes.bind(match.players);
     this.athletes.sync(match.players, dt, this.time, overrides);
+    this.guide.sync(this.replaying ? null : match.aim, match.players);
     this.ball.position.set(ball.x, Math.max(0.14, ball.y), ball.z);
     this.ball.rotation.x += dt * 6;
     this.ball.rotation.y += dt * 2;

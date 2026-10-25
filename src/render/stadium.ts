@@ -26,8 +26,6 @@ export interface BuiltStadium {
 export function buildStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'high'): BuiltStadium {
   const group = new THREE.Group();
   group.name = info.id;
-  const peopleCap = quality === 'low' ? 0 : quality === 'medium' ? 1600 : 2800;
-
   const pitch = buildPitchMaterial(quality);
   const turf = new THREE.Mesh(new THREE.PlaneGeometry(92, 132, 1, 1), pitch.material);
   turf.rotation.x = -Math.PI / 2;
@@ -46,74 +44,7 @@ export function buildStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'hig
   addPosts(group, 50);
   addPosts(group, -50);
 
-  const seats = new THREE.InstancedMesh(
-    new THREE.BoxGeometry(0.46, 0.28, 0.4),
-    new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.8 }),
-    4200,
-  );
-  const heads = new THREE.InstancedMesh(
-    new THREE.SphereGeometry(0.16, 7, 6),
-    new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.62 }),
-    Math.max(1, peopleCap),
-  );
-  const bodies = new THREE.InstancedMesh(
-    new THREE.CapsuleGeometry(0.14, 0.22, 2, 5),
-    new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.75 }),
-    Math.max(1, peopleCap),
-  );
-  let seatIndex = 0;
-  let headIndex = 0;
-  const colorA = new THREE.Color(info.seatA);
-  const colorB = new THREE.Color(info.seatB);
-  const skinTones = ['#e0ac7e', '#c68642', '#8d5524', '#f3d2b5', '#6b4423', '#d7c4a3'].map((h) => new THREE.Color(h));
-  const shirtTones = [colorA, colorB, new THREE.Color('#d9dde3'), new THREE.Color('#1c1c1c')];
-
-  const placeSeat = (x: number, y: number, z: number, row: number, col: number) => {
-    if (seatIndex >= 4200) return;
-    const matrix = new THREE.Matrix4().makeTranslation(x, y, z);
-    seats.setMatrixAt(seatIndex, matrix);
-    const useB = (Math.floor(col / 9) + Math.floor(row / 4)) % 3 === 0;
-    const tint = (useB ? colorB : colorA).clone();
-    const jitter = ((row * 17 + col * 13) % 10) / 10;
-    tint.offsetHSL(0, 0, (jitter - 0.5) * 0.08);
-    seats.setColorAt(seatIndex, tint);
-    seatIndex += 1;
-    if (headIndex < peopleCap && (row * 3 + col) % 5 !== 0) {
-      const shirt = shirtTones[(row + col) % shirtTones.length];
-      heads.setMatrixAt(headIndex, new THREE.Matrix4().makeTranslation(x, y + 0.55, z));
-      heads.setColorAt(headIndex, skinTones[(row + col) % skinTones.length]);
-      bodies.setMatrixAt(headIndex, new THREE.Matrix4().makeTranslation(x, y + 0.22, z));
-      bodies.setColorAt(headIndex, shirt);
-      headIndex += 1;
-    }
-  };
-
-  for (let row = 0; row < 16; row++) {
-    for (let col = 0; col < 78; col++) {
-      if (col % 20 === 10) continue;
-      const z = (col - 39) * 0.72;
-      const y = 1.1 + row * 0.46;
-      placeSeat(-42 - row * 0.78, y, z, row, col);
-      placeSeat(42 + row * 0.78, y, z, row, col + 3);
-    }
-  }
-  for (let row = 0; row < 12; row++) {
-    for (let col = 0; col < 48; col++) {
-      if (col % 16 === 8) continue;
-      const x = (col - 24) * 0.7;
-      const y = 1.3 + row * 0.48;
-      placeSeat(x, y, -66 - row * 0.8, row, col);
-      placeSeat(x, y, 66 + row * 0.8, row, col + 2);
-    }
-  }
-  seats.count = seatIndex;
-  heads.count = Math.max(1, headIndex);
-  bodies.count = Math.max(1, headIndex);
-  if (seats.instanceColor) seats.instanceColor.needsUpdate = true;
-  if (heads.instanceColor) heads.instanceColor.needsUpdate = true;
-  if (bodies.instanceColor) bodies.instanceColor.needsUpdate = true;
-  group.add(seats);
-  if (peopleCap > 0) group.add(bodies, heads);
+  addGrandstands(group, info, quality);
 
   const roofMat = new THREE.MeshStandardMaterial({ color: info.bowl, roughness: 0.6, metalness: 0.2, side: THREE.DoubleSide });
   const roof = new THREE.Mesh(new THREE.BoxGeometry(16, 0.4, 78), roofMat);
@@ -124,20 +55,168 @@ export function buildStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'hig
   group.add(roof2);
 
   addBoards(group);
-  addCrowd(group, info.seatA, info.seatB);
   addRoof(group, info.accent);
   addLights(group, info.night);
   const { meshes, contexts } = addScoreboards(group);
   addTunnel(group);
 
-  const bowl = new THREE.Mesh(
-    new THREE.CylinderGeometry(78, 86, 8, 8, 1, true),
-    new THREE.MeshStandardMaterial({ color: info.bowl, roughness: 0.9, side: THREE.DoubleSide }),
-  );
-  bowl.position.y = 2;
-  group.add(bowl);
-
   return { group, scoreboards: meshes, scoreCtx: contexts, night: info.night, setRain: pitch.setRain };
+}
+
+function addGrandstands(group: THREE.Group, info: StadiumInfo, quality: 'low' | 'medium' | 'high'): void {
+  const seatCap = 3600;
+  const peopleCap = quality === 'low' ? 500 : quality === 'medium' ? 1800 : 3000;
+  const concrete = new THREE.MeshStandardMaterial({ color: '#4c555e', roughness: 0.92 });
+  const wallMat = new THREE.MeshStandardMaterial({ color: info.bowl, roughness: 0.86 });
+  const seatMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.74 });
+  const cloth = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.8 });
+  const skinMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.58 });
+  const hairMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.64 });
+  const seats = new THREE.InstancedMesh(new THREE.BoxGeometry(0.42, 0.08, 0.34), seatMat, seatCap);
+  const backs = new THREE.InstancedMesh(new THREE.BoxGeometry(0.42, 0.32, 0.05), seatMat, seatCap);
+  const torso = new THREE.InstancedMesh(new THREE.BoxGeometry(0.3, 0.34, 0.18), cloth, peopleCap);
+  const head = new THREE.InstancedMesh(new THREE.SphereGeometry(0.09, 8, 6), skinMat, peopleCap);
+  const hair = new THREE.InstancedMesh(new THREE.SphereGeometry(0.096, 7, 5), hairMat, peopleCap);
+  for (const mesh of [seats, backs, torso, head, hair]) {
+    mesh.frustumCulled = false;
+    mesh.receiveShadow = true;
+  }
+  const skins = ['#f3d2b5', '#e0ac7e', '#c68642', '#8d5524', '#6b3a22', '#d7b899'].map((hex) => new THREE.Color(hex));
+  const hairColours = ['#1b140e', '#3a2416', '#6a3e22', '#d7c4a3', '#111111'].map((hex) => new THREE.Color(hex));
+  const shirts = [info.seatA, info.seatB, '#f4f1ea', '#1c1c1c', '#2d4f86', '#8d3a3a', '#2f6b45'].map((hex) => new THREE.Color(hex));
+  const seatA = new THREE.Color(info.seatA);
+  const seatB = new THREE.Color(info.seatB);
+  let seatIndex = 0;
+  let personIndex = 0;
+  const pos = new THREE.Vector3();
+  const quat = new THREE.Quaternion();
+  const scale = new THREE.Vector3(1, 1, 1);
+  const matrix = new THREE.Matrix4();
+  const put = (mesh: THREE.InstancedMesh, index: number, x: number, y: number, z: number, yaw: number, sx = 1, sy = 1, sz = 1) => {
+    pos.set(x, y, z);
+    quat.setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw);
+    scale.set(sx, sy, sz);
+    matrix.compose(pos, quat, scale);
+    mesh.setMatrixAt(index, matrix);
+  };
+  const fill = (rows: number, cols: number, yaw: number, at: (row: number, col: number) => { x: number; y: number; z: number }) => {
+    const fx = Math.sin(yaw);
+    const fz = Math.cos(yaw);
+    for (let row = 0; row < rows; row++) {
+      for (let col = 0; col < cols; col++) {
+        if (col % 16 === 8 || seatIndex >= seatCap) continue;
+        const spot = at(row, col);
+        const plastic = ((row + col) % 5 === 0 ? seatB : seatA).clone();
+        plastic.offsetHSL(0, 0, (((row * 3 + col) % 7) - 3) * 0.02);
+        seats.setColorAt(seatIndex, plastic);
+        backs.setColorAt(seatIndex, plastic);
+        put(seats, seatIndex, spot.x, spot.y, spot.z, yaw);
+        put(backs, seatIndex, spot.x - fx * 0.16, spot.y + 0.16, spot.z - fz * 0.16, yaw);
+        seatIndex += 1;
+        if (personIndex >= peopleCap || (row * 5 + col) % 6 === 0) continue;
+        torso.setColorAt(personIndex, shirts[(row * 3 + col) % shirts.length]);
+        head.setColorAt(personIndex, skins[(row + col * 2) % skins.length]);
+        hair.setColorAt(personIndex, hairColours[(row * 2 + col) % hairColours.length]);
+        put(torso, personIndex, spot.x + fx * 0.05, spot.y + 0.28, spot.z + fz * 0.05, yaw, 1, 0.92 + ((row + col) % 3) * 0.04, 1);
+        put(head, personIndex, spot.x + fx * 0.07, spot.y + 0.52, spot.z + fz * 0.07, yaw);
+        const bald = (row + col) % 11 === 0;
+        put(hair, personIndex, spot.x + fx * 0.05, spot.y + 0.58, spot.z + fz * 0.03, yaw, bald ? 0.01 : 1, bald ? 0.01 : 0.68, bald ? 0.01 : 1);
+        personIndex += 1;
+      }
+    }
+  };
+
+  const sideRows = 12;
+  const sideCols = 68;
+  for (let row = 0; row < sideRows; row++) {
+    const depth = -40.4 - row * 0.82;
+    const step = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.4, 62), concrete);
+    step.position.set(depth, 0.58 + row * 0.4, 0);
+    step.receiveShadow = true;
+    group.add(step);
+    const opposite = step.clone();
+    opposite.position.x = -depth;
+    group.add(opposite);
+  }
+  const westWall = new THREE.Mesh(new THREE.BoxGeometry(0.35, 1.35, 64), wallMat);
+  westWall.position.set(-38.5, 0.7, 0);
+  group.add(westWall);
+  const eastWall = westWall.clone();
+  eastWall.position.x = 38.5;
+  group.add(eastWall);
+  fill(sideRows, sideCols, Math.PI / 2, (row, col) => ({
+    x: -40.2 - row * 0.82,
+    y: 0.78 + row * 0.4,
+    z: (col - (sideCols - 1) / 2) * 0.78,
+  }));
+  fill(sideRows, sideCols, -Math.PI / 2, (row, col) => ({
+    x: 40.2 + row * 0.82,
+    y: 0.78 + row * 0.4,
+    z: (col - (sideCols - 1) / 2) * 0.78,
+  }));
+
+  const endRows = 9;
+  const endCols = 42;
+  for (let row = 0; row < endRows; row++) {
+    const depth = -62.5 - row * 0.82;
+    const step = new THREE.Mesh(new THREE.BoxGeometry(40, 0.4, 0.95), concrete);
+    step.position.set(0, 0.73 + row * 0.42, depth);
+    step.receiveShadow = true;
+    group.add(step);
+    const opposite = step.clone();
+    opposite.position.z = -depth;
+    group.add(opposite);
+  }
+  fill(endRows, endCols, 0, (row, col) => ({
+    x: (col - (endCols - 1) / 2) * 0.78,
+    y: 0.92 + row * 0.42,
+    z: -62.2 - row * 0.82,
+  }));
+  fill(endRows, endCols, Math.PI, (row, col) => ({
+    x: (col - (endCols - 1) / 2) * 0.78,
+    y: 0.92 + row * 0.42,
+    z: 62.2 + row * 0.82,
+  }));
+
+  seats.count = Math.max(1, seatIndex);
+  backs.count = seats.count;
+  torso.count = Math.max(1, personIndex);
+  head.count = torso.count;
+  hair.count = torso.count;
+  for (const mesh of [seats, backs, torso, head, hair]) {
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  }
+  group.add(seats, backs);
+  if (personIndex > 0) group.add(torso, head, hair);
+
+  const westName = fascia(info.name);
+  westName.position.set(-38.2, 1.55, 0);
+  westName.rotation.y = Math.PI / 2;
+  group.add(westName);
+  const eastName = fascia(info.name);
+  eastName.position.set(38.2, 1.55, 0);
+  eastName.rotation.y = -Math.PI / 2;
+  group.add(eastName);
+}
+
+function fascia(name: string): THREE.Mesh {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d')!;
+  ctx.fillStyle = '#12181f';
+  ctx.fillRect(0, 0, 1024, 128);
+  ctx.fillStyle = '#e2b657';
+  ctx.fillRect(0, 0, 1024, 10);
+  ctx.font = '700 64px Barlow Condensed, Impact, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillStyle = '#f7f4ea';
+  ctx.fillText(name.toUpperCase(), 512, 72);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return new THREE.Mesh(new THREE.PlaneGeometry(16, 2), new THREE.MeshStandardMaterial({ map: tex, roughness: 0.7 }));
 }
 
 function addPosts(group: THREE.Group, z: number): void {
@@ -215,50 +294,6 @@ function addRoof(group: THREE.Group, accent: string): void {
     brace2.rotation.z = -0.55;
     group.add(brace2);
   }
-}
-
-function addCrowd(group: THREE.Group, seatA: string, seatB: string): void {
-  const tex = crowdTexture(seatA, seatB);
-  const mat = new THREE.MeshBasicMaterial({ map: tex });
-  const end = new THREE.Mesh(new THREE.PlaneGeometry(74, 16), mat);
-  end.position.set(0, 8, -63);
-  group.add(end);
-  const end2 = end.clone();
-  end2.position.z = 63;
-  end2.rotation.y = Math.PI;
-  group.add(end2);
-  const side = new THREE.Mesh(new THREE.PlaneGeometry(118, 14), mat);
-  side.position.set(-44, 7.5, 0);
-  side.rotation.y = Math.PI / 2;
-  group.add(side);
-  const side2 = side.clone();
-  side2.position.x = 44;
-  side2.rotation.y = -Math.PI / 2;
-  group.add(side2);
-}
-
-function crowdTexture(seatA: string, seatB: string): THREE.CanvasTexture {
-  const canvas = document.createElement('canvas');
-  canvas.width = 1024;
-  canvas.height = 512;
-  const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = seatA;
-  ctx.fillRect(0, 0, 1024, 512);
-  const shirts = [seatA, seatB, '#f7f7f2', '#20242a', '#2d62b0', '#c44747', '#e2b657'];
-  const skins = ['#f3d2b5', '#e0ac7e', '#c68642', '#8d5524', '#6b3a22'];
-  for (let row = 0; row < 42; row++) {
-    for (let col = 0; col < 86; col++) {
-      const x = col * 12 + (row % 2) * 5;
-      const y = row * 12;
-      ctx.fillStyle = shirts[(row * 7 + col * 3) % shirts.length];
-      ctx.fillRect(x, y + 5, 7, 7);
-      ctx.fillStyle = skins[(row * 2 + col) % skins.length];
-      ctx.fillRect(x + 1, y + 1, 5, 4);
-    }
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
 }
 
 function addLights(group: THREE.Group, night: boolean): void {

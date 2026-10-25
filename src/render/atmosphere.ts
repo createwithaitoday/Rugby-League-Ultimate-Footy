@@ -3,15 +3,11 @@ import type { Weather } from '../sim/types';
 
 const MAX_DROPS = 1400;
 
-/** Rain streaks and the cones under the floodlights. Both follow the graphics setting. */
+/** Rain streaks. Density follows the graphics setting. */
 export class MatchAtmosphere {
   private readonly points: THREE.Points;
   private readonly speeds: Float32Array;
-  private readonly shafts: THREE.Mesh[] = [];
   private active = 0;
-  private night = false;
-  private quality: 'low' | 'medium' | 'high' = 'medium';
-  private time = 0;
 
   constructor(scene: THREE.Scene) {
     const positions = new Float32Array(MAX_DROPS * 3);
@@ -29,40 +25,18 @@ export class MatchAtmosphere {
     this.points.frustumCulled = false;
     this.points.visible = false;
     scene.add(this.points);
-    const shaftGeo = new THREE.CylinderGeometry(7.2, 0.55, 22, 12, 1, true);
-    const shaftMat = new THREE.MeshBasicMaterial({
-      color: '#fff1cc',
-      transparent: true,
-      opacity: 0.11,
-      depthWrite: false,
-      side: THREE.DoubleSide,
-      blending: THREE.AdditiveBlending,
-    });
-    for (const [x, z] of [[-30, -36], [30, -36], [-30, 36], [30, 36]] as const) {
-      const shaft = new THREE.Mesh(shaftGeo, shaftMat.clone());
-      shaft.position.set(x, 11, z);
-      shaft.lookAt(0, 0, z * 0.2);
-      shaft.rotateX(-Math.PI / 2);
-      shaft.visible = false;
-      scene.add(shaft);
-      this.shafts.push(shaft);
-    }
   }
 
   setQuality(quality: 'low' | 'medium' | 'high'): void {
-    this.quality = quality;
     this.active = quality === 'high' ? MAX_DROPS : quality === 'medium' ? 700 : 0;
     this.points.geometry.setDrawRange(0, this.active);
   }
 
-  setNight(night: boolean): void {
-    this.night = night;
-    this.applyShafts();
+  setNight(_night: boolean): void {
+    // The lamp banks on the stadium stay. Light cones were covering the stands.
   }
 
   update(dt: number, weather: Weather, focus: { x: number; z: number }): void {
-    this.time += dt;
-    this.applyShafts();
     const rain = Math.max(0, Math.min(1, weather.rain));
     this.points.visible = rain > 0.02 && this.active > 0;
     if (this.points.visible) {
@@ -82,15 +56,6 @@ export class MatchAtmosphere {
       const mat = this.points.material as THREE.PointsMaterial;
       mat.opacity = 0.12 + rain * 0.38;
     }
-    for (const shaft of this.shafts) {
-      const mat = shaft.material as THREE.MeshBasicMaterial;
-      mat.opacity = 0.09 + Math.sin(this.time * 7 + shaft.position.x) * 0.015;
-    }
-  }
-
-  private applyShafts(): void {
-    const show = this.night && this.quality !== 'low';
-    for (const shaft of this.shafts) shaft.visible = show;
   }
 }
 

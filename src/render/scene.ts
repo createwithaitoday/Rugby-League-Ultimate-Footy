@@ -2,7 +2,9 @@ import * as THREE from 'three';
 import type { StadiumInfo } from '../data/teams';
 import type { Match } from '../sim/match';
 import type { Action, Snapshot } from '../sim/types';
+import { MatchAtmosphere } from './atmosphere';
 import { Athletes } from './athletes';
+import { createMatchBall, type BallPose } from './ball';
 import { AimGuide } from './guide';
 import { buildStadium, paintScoreboard, type BuiltStadium } from './stadium';
 import type { CameraMode, FieldView } from './view';
@@ -17,7 +19,8 @@ export class MatchScene implements FieldView {
   private readonly guide = new AimGuide();
   private stadium: BuiltStadium | null = null;
   private stadiumId = '';
-  private ball: THREE.Mesh;
+  private readonly ball: ReturnType<typeof createMatchBall>;
+  private readonly atmosphere: MatchAtmosphere;
   private ten: THREE.Mesh;
   private hemi: THREE.HemisphereLight;
   private sun: THREE.DirectionalLight;
@@ -61,14 +64,9 @@ export class MatchScene implements FieldView {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.scene.add(this.hemi, this.sun);
-    this.ball = new THREE.Mesh(
-      new THREE.SphereGeometry(0.16, 20, 14),
-      new THREE.MeshStandardMaterial({ color: '#f7f4ee', roughness: 0.42, metalness: 0.04 }),
-    );
-    this.ball.castShadow = true;
-    this.ball.scale.set(0.78, 0.72, 1.28);
-    this.scene.add(this.ball);
-    this.decorateBall();
+    this.ball = createMatchBall();
+    this.atmosphere = new MatchAtmosphere(this.scene);
+    this.scene.add(this.ball.group, this.ball.shadow);
     this.ten = new THREE.Mesh(
       new THREE.PlaneGeometry(68, 0.18),
       new THREE.MeshBasicMaterial({ color: '#e2b657', transparent: true, opacity: 0.45, depthWrite: false }),
@@ -95,6 +93,7 @@ export class MatchScene implements FieldView {
       this.sun.shadow.map?.dispose();
       this.sun.shadow.map = null;
     }
+    this.atmosphere.setQuality(quality);
   }
 
   setStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'high'): void {
@@ -112,6 +111,7 @@ export class MatchScene implements FieldView {
     this.sun.intensity = night ? 1.45 : 1.9;
     this.sun.color.set(night ? '#ffe2b0' : '#fff8ee');
     this.renderer.toneMappingExposure = night ? 1.22 : 1.08;
+    this.atmosphere.setNight(night);
     for (const spot of this.spots) this.scene.remove(spot);
     this.spots = [];
     if (night) {
@@ -163,9 +163,12 @@ export class MatchScene implements FieldView {
     this.athletes.bind(match.players);
     this.athletes.sync(match.players, dt, this.time, overrides);
     this.guide.sync(this.replaying ? null : match.aim, match.players);
-    this.ball.position.set(ball.x, Math.max(0.14, ball.y), ball.z);
-    this.ball.rotation.x += dt * 6;
-    this.ball.rotation.y += dt * 2;
+    const pose: BallPose = this.replaying
+      ? { ...ball, vx: 0, vy: 0, vz: 0, mode: 'flight', spin: 0 }
+      : match.ball;
+    this.ball.orient(dt, pose, this.time);
+    this.stadium?.setRain(match.weather.rain);
+    this.atmosphere.update(dt, match.weather, ball);
     const sign = match.attackSign(match.possession);
     const showLine = showTen && match.phase === 'play_the_ball' && match.ruck;
     this.ten.visible = Boolean(showLine);
@@ -240,28 +243,6 @@ export class MatchScene implements FieldView {
       const mat = mesh.material as THREE.MeshBasicMaterial;
       if (mat.map) mat.map.needsUpdate = true;
     }
-  }
-
-  private decorateBall(): void {
-    const canvas = document.createElement('canvas');
-    canvas.width = 128;
-    canvas.height = 64;
-    const ctx = canvas.getContext('2d')!;
-    ctx.fillStyle = '#f6f3ea';
-    ctx.fillRect(0, 0, 128, 64);
-    ctx.strokeStyle = '#2a241c';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.ellipse(64, 32, 18, 26, 0, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = '#c9a24a';
-    ctx.beginPath();
-    ctx.moveTo(64, 12);
-    ctx.lineTo(64, 52);
-    ctx.stroke();
-    const tex = new THREE.CanvasTexture(canvas);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    (this.ball.material as THREE.MeshStandardMaterial).map = tex;
   }
 }
 

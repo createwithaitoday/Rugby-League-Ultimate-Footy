@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import type { StadiumInfo } from '../data/teams';
+import { buildPitchMaterial } from './pitch';
 
 const SPONSORS = [
   'HARBOUR BANK',
@@ -19,6 +20,7 @@ export interface BuiltStadium {
   scoreboards: THREE.Mesh[];
   scoreCtx: CanvasRenderingContext2D[];
   night: boolean;
+  setRain(amount: number): void;
 }
 
 export function buildStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'high'): BuiltStadium {
@@ -26,17 +28,19 @@ export function buildStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'hig
   group.name = info.id;
   const peopleCap = quality === 'low' ? 0 : quality === 'medium' ? 1600 : 2800;
 
-  const turf = new THREE.Mesh(new THREE.PlaneGeometry(92, 132, 1, 1), fieldMaterial());
+  const pitch = buildPitchMaterial(quality);
+  const turf = new THREE.Mesh(new THREE.PlaneGeometry(92, 132, 1, 1), pitch.material);
   turf.rotation.x = -Math.PI / 2;
   turf.receiveShadow = true;
   group.add(turf);
 
   const apron = new THREE.Mesh(
     new THREE.PlaneGeometry(120, 150),
-    new THREE.MeshStandardMaterial({ color: '#3c4650', roughness: 0.92 }),
+    new THREE.MeshStandardMaterial({ color: '#2c343c', roughness: 0.94 }),
   );
   apron.rotation.x = -Math.PI / 2;
   apron.position.y = -0.02;
+  apron.receiveShadow = true;
   group.add(apron);
 
   addPosts(group, 50);
@@ -133,15 +137,16 @@ export function buildStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'hig
   bowl.position.y = 2;
   group.add(bowl);
 
-  return { group, scoreboards: meshes, scoreCtx: contexts, night: info.night };
+  return { group, scoreboards: meshes, scoreCtx: contexts, night: info.night, setRain: pitch.setRain };
 }
 
 function addPosts(group: THREE.Group, z: number): void {
   const mat = new THREE.MeshStandardMaterial({ color: '#f4f7f8', roughness: 0.35, metalness: 0.15 });
   const pad = new THREE.MeshStandardMaterial({ color: '#d7dde3', roughness: 0.8 });
   for (const x of [-2.75, 2.75]) {
-    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 8, 8), mat);
+    const post = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.07, 8, 10), mat);
     post.position.set(x, 4, z);
+    post.castShadow = true;
     group.add(post);
     const base = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 1.2, 8), pad);
     base.position.set(x, 0.6, z);
@@ -150,6 +155,7 @@ function addPosts(group: THREE.Group, z: number): void {
   const bar = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 5.5, 8), mat);
   bar.rotation.z = Math.PI / 2;
   bar.position.set(0, 3, z);
+  bar.castShadow = true;
   group.add(bar);
 }
 
@@ -263,8 +269,9 @@ function addLights(group: THREE.Group, night: boolean): void {
     emissiveIntensity: night ? 1.4 : 0.3,
   });
   for (const [x, z] of [[-40, -48], [40, -48], [-40, 48], [40, 48]] as const) {
-    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, 18, 6), poleMat);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, 18, 8), poleMat);
     pole.position.set(x, 9, z);
+    pole.castShadow = true;
     group.add(pole);
     const bank = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.35, 1.6), lampMat);
     bank.position.set(x, 18.2, z);
@@ -313,59 +320,6 @@ function addTunnel(group: THREE.Group): void {
     bench.position.set(x, 0.4, -4);
     group.add(bench);
   }
-}
-
-function fieldMaterial(): THREE.MeshStandardMaterial {
-  const width = 1024;
-  const height = 1536;
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d')!;
-  const px = (worldX: number) => ((worldX + 46) / 92) * width;
-  const py = (worldZ: number) => ((worldZ + 66) / 132) * height;
-  for (let z = -66; z < 66; z += 4) {
-    const y0 = py(z);
-    const y1 = py(z + 4);
-    const band = Math.floor((z + 66) / 4);
-    ctx.fillStyle = band % 2 === 0 ? '#145c28' : '#67c56e';
-    ctx.fillRect(0, Math.min(y0, y1), width, Math.abs(y1 - y0) + 1);
-  }
-  ctx.fillStyle = '#246c3a';
-  ctx.fillRect(px(-34), Math.min(py(50), py(58)), px(34) - px(-34), Math.abs(py(58) - py(50)));
-  ctx.fillRect(px(-34), Math.min(py(-58), py(-50)), px(34) - px(-34), Math.abs(py(-50) - py(-58)));
-  ctx.fillStyle = '#6d624f';
-  ctx.fillRect(0, 0, px(-34.4), height);
-  ctx.fillRect(px(34.4), 0, width - px(34.4), height);
-  ctx.fillRect(0, 0, width, Math.min(py(-58.4), py(58.4)));
-  ctx.fillRect(0, Math.max(py(-58.4), py(58.4)), width, height);
-  ctx.globalAlpha = 0.18;
-  for (let i = 0; i < 2800; i++) {
-    ctx.fillStyle = i % 2 === 0 ? '#163f1e' : '#b7e2a4';
-    ctx.fillRect((i * 97) % width, (i * 53) % height, 2, 4);
-  }
-  ctx.globalAlpha = 1;
-  ctx.fillStyle = '#f4f7f2';
-  const across = (z: number, thick: number) => {
-    const y = py(z);
-    ctx.fillRect(px(-34), y - thick / 2, px(34) - px(-34), thick);
-  };
-  for (const z of [-40, -30, -20, -10, 10, 20, 30, 40]) across(z, 3);
-  across(0, 4);
-  across(50, 5);
-  across(-50, 5);
-  across(58, 3);
-  across(-58, 3);
-  const touch = (x: number) => {
-    const left = px(x);
-    ctx.fillRect(left - 2, Math.min(py(-58), py(58)), 4, Math.abs(py(58) - py(-58)));
-  };
-  touch(-34);
-  touch(34);
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 8;
-  return new THREE.MeshStandardMaterial({ map: tex, roughness: 0.92, metalness: 0 });
 }
 
 export function paintScoreboard(

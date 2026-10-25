@@ -70,4 +70,4 @@ Saves use `localStorage` under `meridian-league-save`, with a copy beside it. Ve
 - Crowd figures are instanced heads, not individual people.
 - The game has not been tested on a physical iPhone or Android handset in this project. The Android package is the browser game in a WebView.
 - Advantage, sin bins, and a video referee that can overturn the simulation are not implemented. The whistle is immediate.
-- Graphics quality settings change pixel ratio and crowd density. They are not a profiled 60 fps guarantee.
+- Graphics quality settings change pixel ratio, crowd density, rain streaks, and floodlight shafts. They are not a profiled 60 fps guarantee.

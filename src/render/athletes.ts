@@ -179,6 +179,7 @@ export class Athletes {
   private readonly nose: THREE.InstancedMesh;
   private readonly brow: THREE.InstancedMesh;
   private readonly collar: THREE.InstancedMesh;
+  private readonly stripe: THREE.InstancedMesh;
   private readonly finger: THREE.InstancedMesh;
   private readonly neck: THREE.InstancedMesh;
   private readonly shoulder: THREE.InstancedMesh;
@@ -198,7 +199,7 @@ export class Athletes {
     const skinMat = new THREE.MeshPhysicalMaterial({
       color: '#ffffff', roughness: 0.4, metalness: 0, sheen: 0.35, sheenRoughness: 0.4, sheenColor: new THREE.Color('#f0c2a0'),
     });
-    const cloth = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.78, metalness: 0.03 });
+    const cloth = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.62, metalness: 0.04 });
     const hairMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.55, metalness: 0.04 });
     const bootMat = new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.32, metalness: 0.18 });
     const eyeMat = new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.2 });
@@ -210,6 +211,7 @@ export class Athletes {
     this.beard = this.make(new THREE.SphereGeometry(0.055, 8, 6), hairMat);
     this.neck = this.make(capsule(0.055, 0.07), skinMat);
     this.collar = this.make(new THREE.TorusGeometry(0.09, 0.02, 6, 12), cloth);
+    this.stripe = this.make(new THREE.BoxGeometry(0.34, 0.045, 0.02), cloth, COUNT, false);
     this.shoulder = this.make(new THREE.SphereGeometry(0.1, 10, 8), cloth, COUNT * 2);
     this.sleeve = this.make(capsule(0.068, 0.16), cloth, COUNT * 2);
     this.arm = this.make(capsule(0.052, 0.2), skinMat, COUNT * 2);
@@ -292,6 +294,7 @@ export class Athletes {
       this.nose.setColorAt(i, skin);
       this.brow.setColorAt(i, hair);
       this.collar.setColorAt(i, jersey);
+      this.stripe.setColorAt(i, jersey.clone().lerp(new THREE.Color('#f7f4ea'), 0.62));
       for (let f = 0; f < 8; f++) this.finger.setColorAt(i * 8 + f, skin);
       const mat = this.number[i].material as THREE.MeshBasicMaterial;
       if (mat.map) mat.map.dispose();
@@ -299,7 +302,7 @@ export class Athletes {
       mat.needsUpdate = true;
       this.number[i].visible = p.onField;
     });
-    for (const mesh of [this.torso, this.shorts, this.head, this.hair, this.beard, this.neck, this.collar, this.shoulder, this.sleeve, this.arm, this.forearm, this.hand, this.finger, this.ear, this.nose, this.brow, this.thigh, this.shin, this.sock, this.boot, this.sclera, this.eye]) {
+    for (const mesh of [this.torso, this.shorts, this.head, this.hair, this.beard, this.neck, this.collar, this.stripe, this.shoulder, this.sleeve, this.arm, this.forearm, this.hand, this.finger, this.ear, this.nose, this.brow, this.thigh, this.shin, this.sock, this.boot, this.sclera, this.eye]) {
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     }
   }
@@ -338,6 +341,7 @@ export class Athletes {
       const head = this.local(torso, 0, 0.46, 0.02, pose.head, 0, 0);
       this.neck.setMatrixAt(i, this.local(torso, 0, 0.32, 0));
       this.collar.setMatrixAt(i, this.local(torso, 0, 0.28, 0, Math.PI / 2, 0, 0));
+      this.stripe.setMatrixAt(i, this.local(torso, 0, 0.06, 0.34, 0, 0, 0, 0.9, 1, 1));
       this.head.setMatrixAt(i, this.local(head, 0, 0.02, 0, 0, 0, 0, 1.02, 1.16, 0.94));
       this.shoulder.setMatrixAt(i * 2, this.local(torso, -0.22, 0.18, 0, 0, 0, 0, 1.35, 0.9, 1));
       this.shoulder.setMatrixAt(i * 2 + 1, this.local(torso, 0.22, 0.18, 0, 0, 0, 0, 1.35, 0.9, 1));
@@ -391,7 +395,7 @@ export class Athletes {
       );
       this.shadow.setMatrixAt(i, shadow);
     });
-    for (const mesh of [this.torso, this.shorts, this.head, this.hair, this.beard, this.neck, this.collar, this.shoulder, this.sleeve, this.arm, this.forearm, this.hand, this.finger, this.ear, this.nose, this.brow, this.thigh, this.shin, this.sock, this.boot, this.sclera, this.eye, this.shadow]) {
+    for (const mesh of [this.torso, this.shorts, this.head, this.hair, this.beard, this.neck, this.collar, this.stripe, this.shoulder, this.sleeve, this.arm, this.forearm, this.hand, this.finger, this.ear, this.nose, this.brow, this.thigh, this.shin, this.sock, this.boot, this.sclera, this.eye, this.shadow]) {
       mesh.instanceMatrix.needsUpdate = true;
     }
   }

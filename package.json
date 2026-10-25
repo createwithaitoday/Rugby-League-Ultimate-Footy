@@ -1,9 +1,9 @@
 {
-  "name": "rugby-league-next-generation",
-  "version": "0.9.0",
+  "name": "mega-smash-rugby-league-27",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Original 13-a-side rugby league simulation with a deterministic match engine and 3D presentation.",
+  "description": "Mega Smash: Rugby League 27 — full-size contact rugby league with mega hits, slow-mo, blood, and fights.",
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 8741",
     "build": "tsc --noEmit && vite build",

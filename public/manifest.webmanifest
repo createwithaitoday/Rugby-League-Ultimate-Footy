@@ -1,7 +1,7 @@
 {
-  "name": "National Rugby League: Ultimate Footy",
-  "short_name": "Ultimate Footy",
-  "description": "Original 13-a-side rugby league match.",
+  "name": "Mega Smash: Rugby League 27",
+  "short_name": "Mega Smash 27",
+  "description": "Full-size rugby league with mega hits, slow-mo, blood, and fights.",
   "start_url": ".",
   "display": "standalone",
   "background_color": "#071018",
@@ -12,6 +12,12 @@
       "src": "icon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any"
     }
   ]

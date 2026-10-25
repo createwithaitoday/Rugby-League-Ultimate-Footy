@@ -105,6 +105,17 @@ export class Match implements MatchView {
   replay: Snapshot[] = [];
   tryInfo: { x: number; z: number; team: TeamId; playerId: number } | null = null;
   unstuckCount = 0;
+  /** Mega / illegal tackle button is only armed for short windows. */
+  megaArmed = false;
+  megaArmedUntil = 0;
+  timeScale = 1;
+  private timeScaleUntil = 0;
+  fightOpen = false;
+  fightKind: 'duel' | 'brawl' | null = null;
+  fightUntil = 0;
+  lastImpact: { x: number; z: number; power: number; bloody: boolean; t: number } | null = null;
+  private nextFightRoll = 18;
+  private megaCooldownUntil = 0;
 
   get awardedTeam(): TeamId {
     return this.penaltyTeam;
@@ -199,7 +210,8 @@ export class Match implements MatchView {
 
   step(dt: number, input: HumanInput | null): void {
     if (this.phase === 'full_time' || this.phase === 'prematch') return;
-    const clamped = Math.max(0, Math.min(0.1, dt));
+    const scaled = this.tickPresentation(dt);
+    const clamped = Math.max(0, Math.min(0.1, scaled));
     if (clamped <= 0) return;
     const slices = Math.max(1, Math.ceil(clamped / (1 / 60)));
     const h = clamped / slices;
@@ -636,6 +648,8 @@ export class Match implements MatchView {
     if (input.restartChoice) this.chooseRestart(input.restartChoice);
     if (input.goalError !== null && this.phase === 'conversion') this.takeGoalKick(input.goalError);
     if (input.release) this.releasePresentation();
+    if (input.megaTackle) this.tryMegaTackle(p);
+    if (input.fightChoice) this.resolveFight(input.fightChoice);
   }
 
   private phaseAllowsMove(): boolean {
@@ -886,6 +900,8 @@ export class Match implements MatchView {
         t.fatigue = Math.min(1, t.fatigue + 0.015);
       }
       this.emit('tackle_break', c.team, `Broken tackle — ${c.name}`, c.id, c.x, c.z);
+      this.lastImpact = { x: c.x, z: c.z, power: 0.35, bloody: false, t: this.elapsed };
+      this.maybeArmMega();
       return;
     }
     this.phase = 'tackle';
@@ -902,6 +918,21 @@ export class Match implements MatchView {
       this.setAction(t, 'wrap', 0.4);
       t.fatigue = Math.min(1, t.fatigue + 0.02);
     }
+    const power = kind === 'dominant' ? 0.85 : 0.45;
+    const bloody = kind === 'dominant' && Math.random() < 0.42;
+    this.lastImpact = { x: c.x, z: c.z, power, bloody, t: this.elapsed };
+    if (bloody) {
+      this.setAction(c, 'injured', 0.8);
+      this.emit('blood_bin', c.team, `Blood — ${c.name}`, c.id, c.x, c.z);
+    }
+    if (kind === 'dominant') {
+      this.timeScale = 0.28;
+      this.timeScaleUntil = this.elapsed + 0.85;
+      this.emit('slow_mo', -1, 'Impact replay', c.id, c.x, c.z);
+      this.captureSlowMoReplay();
+    }
+    this.maybeArmMega();
+    this.maybeSparkFight(c, tacklers[0]);
   }
 
   private updateTackle(dt: number): void {
@@ -2156,6 +2187,119 @@ export class Match implements MatchView {
     p.actionUntil = this.elapsed + lock;
   }
 
+  private maybeArmMega(): void {
+    if (this.elapsed < this.megaCooldownUntil) return;
+    if (this.possession === this.humanTeam) return;
+    if (Math.random() > 0.22) return;
+    this.megaArmed = true;
+    this.megaArmedUntil = this.elapsed + 2.8;
+  }
+
+  private tryMegaTackle(defender: Player): void {
+    if (!this.megaArmed || this.elapsed > this.megaArmedUntil) return;
+    if (this.humanTeam === null || defender.team !== this.humanTeam) return;
+    if (this.phase !== 'open_play' && this.phase !== 'tackle') return;
+    const c = this.carrier();
+    if (!c || c.team === defender.team) return;
+    const dxy = Math.hypot(defender.x - c.x, defender.z - c.z);
+    if (dxy > 2.4) return;
+    this.megaArmed = false;
+    this.megaCooldownUntil = this.elapsed + 28;
+    const illegal = Math.random() < 0.62;
+    const spotted = illegal && Math.random() < 0.48;
+    defender.engage = true;
+    defender.x = c.x + (Math.random() - 0.5) * 0.2;
+    defender.z = c.z + (Math.random() - 0.5) * 0.2;
+    this.setAction(defender, 'mega_hit', 0.7);
+    this.setAction(c, 'injured', 1.2);
+    c.stumbleUntil = this.elapsed + 1.4;
+    c.fatigue = Math.min(1, c.fatigue + 0.12);
+    this.lastImpact = { x: c.x, z: c.z, power: 1.35, bloody: true, t: this.elapsed };
+    this.timeScale = 0.18;
+    this.timeScaleUntil = this.elapsed + 1.35;
+    this.captureSlowMoReplay();
+    if (illegal) {
+      this.emit('illegal_tackle', defender.team, spotted
+        ? `Illegal mega hit — spotted on ${c.name}`
+        : `Mega break-neck hit — play on, ref missed it`, defender.id, c.x, c.z);
+      if (spotted) {
+        this.callPenalty(defender.team, c.x, c.z, 'Dangerous contact');
+        return;
+      }
+    } else {
+      this.emit('mega_tackle', defender.team, `Mega smash on ${c.name}`, defender.id, c.x, c.z);
+    }
+    this.phase = 'tackle';
+    this.phaseTime = 0;
+    this.ruck = {
+      x: c.x,
+      z: c.z,
+      tackledId: c.id,
+      tacklerIds: [defender.id],
+      dominant: true,
+    };
+  }
+
+  private maybeSparkFight(carrier: Player, tackler: Player | undefined): void {
+    if (!tackler || this.fightOpen) return;
+    if (this.elapsed < this.nextFightRoll) return;
+    this.nextFightRoll = this.elapsed + 14 + Math.random() * 22;
+    if (Math.random() > 0.16) return;
+    this.fightOpen = true;
+    this.fightKind = Math.random() < 0.28 ? 'brawl' : 'duel';
+    this.fightUntil = this.elapsed + 12;
+    this.emit('fight', -1, this.fightKind === 'brawl' ? 'All-in brawl brewing' : `Temper flare — ${tackler.name} and ${carrier.name}`, tackler.id, carrier.x, carrier.z);
+    this.holdPresentation = true;
+    this.released = false;
+  }
+
+  private resolveFight(choice: 'punch' | 'kick' | 'wrestle' | 'brawl' | 'back_down'): void {
+    if (!this.fightOpen) return;
+    this.fightOpen = false;
+    this.released = true;
+    const c = this.carrier() ?? this.players.find((p) => p.id === this.ruck?.tackledId);
+    const t = this.players.find((p) => this.ruck?.tacklerIds.includes(p.id)) ?? this.players.find((p) => p.onField && p.team !== c?.team);
+    if (!c || !t) return;
+    if (choice === 'back_down') {
+      this.emit('fight', -1, 'Players separate — play on', -1, c.x, c.z);
+      return;
+    }
+    const brawl = choice === 'brawl' || this.fightKind === 'brawl';
+    const cast = brawl
+      ? this.players.filter((p) => p.onField).slice(0, 18)
+      : [c, t];
+    for (const p of cast) {
+      const act: Action = choice === 'kick' ? 'kick_fight' : choice === 'wrestle' ? 'wrestle' : 'punch';
+      this.setAction(p, act, 1.4 + Math.random() * 0.6);
+      p.fatigue = Math.min(1, p.fatigue + 0.04);
+      p.stumbleUntil = this.elapsed + 0.9;
+    }
+    this.lastImpact = { x: c.x, z: c.z, power: brawl ? 1.5 : 0.9, bloody: true, t: this.elapsed };
+    this.timeScale = 0.22;
+    this.timeScaleUntil = this.elapsed + 1.6;
+    this.emit(brawl ? 'brawl' : 'fight', -1, brawl ? 'All-in brawl — everyone in' : `${choice} — scrap on the fringe`, t.id, c.x, c.z);
+    if (Math.random() < 0.55) {
+      const offender = Math.random() < 0.5 ? t.team : c.team;
+      this.callPenalty(offender, c.x, c.z, 'Fighting');
+    }
+  }
+
+  private captureSlowMoReplay(): void {
+    if (this.history.length < 8) return;
+    this.replay = this.history.slice(-36);
+    this.emit('slow_mo', -1, 'Slow-mo impact', -1, this.ball.x, this.ball.z);
+  }
+
+  tickPresentation(dt: number): number {
+    if (this.megaArmed && this.elapsed > this.megaArmedUntil) this.megaArmed = false;
+    if (this.fightOpen && this.elapsed > this.fightUntil) {
+      this.fightOpen = false;
+      this.released = true;
+    }
+    if (this.elapsed > this.timeScaleUntil) this.timeScale = 1;
+    return dt * this.timeScale;
+  }
+
   private emit(type: EventType, team: TeamId | -1, text: string, playerId = -1, x = 0, z = 0): void {
     this.events.push({
       id: this.eventId++,
@@ -2226,6 +2370,8 @@ export function emptyInput(): HumanInput {
     offload: false,
     switchPlayer: false,
     quickPlay: false,
+    megaTackle: false,
+    fightChoice: null,
     restartChoice: null,
     goalError: null,
     release: false,

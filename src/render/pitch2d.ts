@@ -52,7 +52,7 @@ export class Pitch2D implements FieldView {
     this.shake = Math.max(this.shake, amount);
   }
 
-  startReplay(frames: Snapshot[]): void {
+  startReplay(frames: Snapshot[], _duration?: number): void {
     if (frames.length < 2) return;
     this.replay = frames;
     this.replayT = 0;

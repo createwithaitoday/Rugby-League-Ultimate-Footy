@@ -5,6 +5,7 @@ import type { Action, Snapshot } from '../sim/types';
 import { MatchAtmosphere } from './atmosphere';
 import { Athletes } from './athletes';
 import { createMatchBall, type BallPose } from './ball';
+import { ImpactFX } from './fx';
 import { AimGuide } from './guide';
 import { buildStadium, paintScoreboard, type BuiltStadium } from './stadium';
 import type { CameraMode, FieldView } from './view';
@@ -17,6 +18,8 @@ export class MatchScene implements FieldView {
   readonly camera: THREE.PerspectiveCamera;
   readonly athletes = new Athletes();
   private readonly guide = new AimGuide();
+  private readonly fx = new ImpactFX();
+  private lastImpactT = -1;
   private stadium: BuiltStadium | null = null;
   private stadiumId = '';
   private readonly ball: ReturnType<typeof createMatchBall>;
@@ -42,8 +45,8 @@ export class MatchScene implements FieldView {
     this.renderer.setPixelRatio(1);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.05;
-    this.camera = new THREE.PerspectiveCamera(42, 1, 0.2, 280);
+    this.renderer.toneMappingExposure = 1.18;
+    this.camera = new THREE.PerspectiveCamera(40, 1, 0.2, 320);
     this.scene.background = new THREE.Color('#081018');
     this.scene.fog = new THREE.Fog('#081018', 70, 190);
     this.hemi = new THREE.HemisphereLight('#d5e6f6', '#2f6a38', 0.72);
@@ -74,7 +77,7 @@ export class MatchScene implements FieldView {
     this.ten.rotation.x = -Math.PI / 2;
     this.ten.position.y = 0.04;
     this.ten.visible = false;
-    this.scene.add(this.ten, this.athletes.group, this.guide.group);
+    this.scene.add(this.ten, this.athletes.group, this.guide.group, this.fx.group);
     canvas.addEventListener('webglcontextlost', (event) => {
       event.preventDefault();
       this.lost = true;
@@ -82,12 +85,12 @@ export class MatchScene implements FieldView {
   }
 
   setQuality(quality: 'low' | 'medium' | 'high'): void {
-    const ratio = quality === 'high' ? 1.5 : quality === 'medium' ? 1.15 : 1;
+    const ratio = quality === 'high' ? 2 : quality === 'medium' ? 1.35 : 1;
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ratio));
     const shadows = quality !== 'low';
     this.renderer.shadowMap.enabled = shadows;
     this.sun.castShadow = shadows;
-    const size = quality === 'high' ? 2048 : 1024;
+    const size = quality === 'high' ? 4096 : quality === 'medium' ? 2048 : 1024;
     if (this.sun.shadow.mapSize.x !== size) {
       this.sun.shadow.mapSize.set(size, size);
       this.sun.shadow.map?.dispose();
@@ -135,10 +138,11 @@ export class MatchScene implements FieldView {
     this.shake = Math.max(this.shake, amount);
   }
 
-  startReplay(frames: Snapshot[]): void {
+  startReplay(frames: Snapshot[], duration = 3.2): void {
     if (frames.length < 2) return;
     this.replay = frames;
     this.replayT = 0;
+    this.replayDur = duration;
     this.replaying = true;
   }
 
@@ -163,6 +167,12 @@ export class MatchScene implements FieldView {
     this.athletes.bind(match.players);
     this.athletes.sync(match.players, dt, this.time, overrides);
     this.guide.sync(this.replaying ? null : match.aim, match.players);
+    if (match.lastImpact && match.lastImpact.t !== this.lastImpactT) {
+      this.lastImpactT = match.lastImpact.t;
+      this.fx.burst(match.lastImpact.x, match.lastImpact.z, match.lastImpact.power, match.lastImpact.bloody);
+      this.punch(0.2 + match.lastImpact.power * 0.55);
+    }
+    this.fx.update(dt);
     const pose: BallPose = this.replaying
       ? { ...ball, vx: 0, vy: 0, vz: 0, mode: 'flight', spin: 0 }
       : match.ball;
@@ -200,9 +210,9 @@ export class MatchScene implements FieldView {
       look.set(0, 1.2, 6);
       this.camera.fov = 42;
     } else if (this.replaying) {
-      desired.set(ball.x + 9, 2.4, ball.z - sign * 7);
-      look.set(ball.x, 0.7, ball.z + sign * 1.5);
-      this.camera.fov = 34;
+      desired.set(ball.x + 7.5, 2.1, ball.z - sign * 5.5);
+      look.set(ball.x, 0.85, ball.z + sign * 1.2);
+      this.camera.fov = 28;
     } else if (mode === 'broadcast') {
       desired.set(ball.x * 0.15 - 28, 9.5, ball.z - sign * 6);
       look.set(ball.x * 0.55, 1.1, ball.z + sign * 8);

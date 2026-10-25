@@ -11,6 +11,7 @@ import { defaultTactic } from '../sim/types';
 import { bannerForScreen, setMenuBanner } from './ads';
 import { MatchAudio } from './audio';
 import { ControlState } from './input';
+import { IntroPromo } from './intro';
 import {
   achievementCatalog,
   loadSave,
@@ -90,12 +91,14 @@ export class Game {
   private fps = 0;
   private prevPhase = '';
   private hidden = false;
+  private readonly intro: IntroPromo;
 
   constructor() {
     this.save = loadSave();
     const view = createView(must('view'));
     this.canvas = view.canvas;
     this.scene = view.view;
+    this.intro = new IntroPromo(document.body);
     document.body.dataset.pitch = view.flat ? 'flat' : view.view ? '3d' : 'none';
     if (view.flat && view.view) {
       const note = must('gfx-note');
@@ -140,6 +143,13 @@ export class Game {
       this.startDrill(target.dataset.drill as DrillId);
     });
     must('setup-start').addEventListener('click', () => this.startQuick());
+    must('fight-panel').addEventListener('click', (event) => {
+      const button = (event.target as HTMLElement).closest('button');
+      const choice = button?.dataset.fight as 'punch' | 'kick' | 'wrestle' | 'brawl' | 'back_down' | undefined;
+      if (!choice) return;
+      this.controls.fightChoice = choice;
+      this.audio.click();
+    });
     must('btn-pause').addEventListener('click', () => this.togglePause(true));
     must('pause-resume').addEventListener('click', () => this.togglePause(false));
     must('pause-camera').addEventListener('click', () => this.cycleCamera());
@@ -282,18 +292,21 @@ export class Game {
     must('pause').hidden = true;
     document.body.classList.toggle('playing', playing);
     this.audio.setMenuMusic(!playing);
+    if (playing || screen !== 'menu') this.intro.stop();
+    else this.intro.start();
     setMenuBanner(bannerForScreen(screen));
   }
 
   private openMenu(): void {
-    const home = this.teams[0];
-    const away = this.teams[1];
+    const home = this.teams.find((t) => t.id === 'manly') ?? this.teams[0];
+    const away = this.teams.find((t) => t.id === 'parramatta') ?? this.teams[1];
     this.match = new Match({ home, away, humanTeam: null, seed: 1, stadiumId: home.stadiumId });
     this.match.lineup();
     this.drill = null;
     this.fixtureId = null;
     this.resultsShown = false;
     this.present(home.stadiumId);
+    this.intro.start();
     this.show('menu');
   }
 
@@ -672,6 +685,8 @@ export class Game {
       offload,
       switchPlayer: shot.switchPlayer,
       quickPlay: shot.quick,
+      megaTackle: shot.megaTackle,
+      fightChoice: shot.fightChoice,
       restartChoice: shot.restart,
       goalError: shot.goalError,
       release: shot.release,
@@ -706,9 +721,15 @@ export class Game {
         this.holdingReplay = this.scene.replaying;
         if (!this.holdingReplay) match.releasePresentation();
       }
-    } else if (event.type === 'tackle' || event.type === 'tackle_break') {
+    } else if (event.type === 'tackle' || event.type === 'tackle_break' || event.type === 'mega_tackle' || event.type === 'illegal_tackle' || event.type === 'blood_bin' || event.type === 'slow_mo') {
       this.audio.thud();
-      if (this.save.settings.shake) this.scene?.punch(event.type === 'tackle' ? 0.28 : 0.12);
+      if (this.save.settings.shake) this.scene?.punch(event.type === 'mega_tackle' || event.type === 'illegal_tackle' ? 0.7 : event.type === 'tackle' ? 0.28 : 0.12);
+      if ((event.type === 'mega_tackle' || event.type === 'illegal_tackle' || event.type === 'slow_mo') && this.scene && match.replay.length > 1) {
+        this.scene.startReplay(match.replay, 2.4);
+      }
+    } else if (event.type === 'fight' || event.type === 'brawl') {
+      this.audio.thud();
+      if (this.save.settings.shake) this.scene?.punch(0.55);
     } else if (event.type === 'conversion' || event.type === 'penalty_goal' || event.type === 'field_goal') {
       this.audio.cheer();
     } else if (event.type === 'penalty' || event.type === 'knock_on' || event.type === 'forward_pass' || event.type === 'handover' || event.type === 'six_again' || event.type === 'half_time' || event.type === 'full_time' || event.type === 'held_up') {
@@ -814,10 +835,11 @@ export class Game {
   private renderActions(match: Match): void {
     const attack = match.humanTeam !== null && match.possession === match.humanTeam;
     const phase = match.phase;
-    const key = `${attack ? 'a' : 'd'}:${phase}:${this.kickOpen}`;
+    const mega = match.megaArmed && match.elapsed <= match.megaArmedUntil;
+    const key = `${attack ? 'a' : 'd'}:${phase}:${this.kickOpen}:${mega ? 1 : 0}:${match.fightOpen ? 1 : 0}`;
     if (key === this.actionKey) return;
     this.actionKey = key;
-    const buttons: { act: string; label: string }[] = [];
+    const buttons: { act: string; label: string; cls?: string }[] = [];
     if (phase === 'play_the_ball' && attack) buttons.push({ act: 'quick', label: 'Quick PTB' });
     else if (phase === 'restart' && attack) buttons.push({ act: 'quick', label: 'Tap' });
     else if (attack) {
@@ -830,14 +852,28 @@ export class Game {
       buttons.push({ act: 'tackle', label: 'Tackle' });
       buttons.push({ act: 'switch', label: 'Switch' });
       buttons.push({ act: 'sprint', label: 'Sprint' });
+      if (mega) buttons.push({ act: 'mega', label: 'MEGA HIT', cls: 'mega' });
     }
-    must('actions').innerHTML = buttons.map((button) => `<button type="button" data-act="${button.act}">${button.label}</button>`).join('');
+    must('actions').innerHTML = buttons.map((button) => `<button type="button" class="${button.cls ?? ''}" data-act="${button.act}">${button.label}</button>`).join('');
     const wheel = must('kick-wheel');
     const metres = metresToGoal(match, match.possession, match.ball.z);
     wheel.innerHTML = KICKS.filter((kick) => kick.id !== 'field_goal' || metres < 48)
       .map((kick) => `<button type="button" data-kick="${kick.id}">${kick.label}</button>`)
       .join('');
     wheel.hidden = !this.kickOpen || !attack;
+    this.renderFight(match);
+  }
+
+  private renderFight(match: Match): void {
+    const panel = must('fight-panel');
+    if (!match.fightOpen) {
+      panel.hidden = true;
+      return;
+    }
+    panel.hidden = false;
+    must('fight-text').textContent = match.fightKind === 'brawl'
+      ? 'All-in brawl — every player can pile in.'
+      : 'Temper flare — punch, kick, wrestle, or back down.';
   }
 
   private onAction(event: PointerEvent, down: boolean): void {
@@ -851,6 +887,7 @@ export class Game {
     else if (down && act === 'dive') this.controls.dive = true;
     else if (down && act === 'switch') this.controls.switchPlayer = true;
     else if (down && act === 'quick') this.controls.quick = true;
+    else if (down && act === 'mega') this.controls.megaTackle = true;
     else if (down && act === 'target' && this.match) this.cycleReceiver(this.match);
     else if (down && act === 'kick') {
       this.kickOpen = !this.kickOpen;

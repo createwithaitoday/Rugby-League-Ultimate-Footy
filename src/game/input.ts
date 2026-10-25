@@ -6,6 +6,8 @@ export interface OneShots {
   switchPlayer: boolean;
   quick: boolean;
   release: boolean;
+  megaTackle: boolean;
+  fightChoice: 'punch' | 'kick' | 'wrestle' | 'brawl' | 'back_down' | null;
   restart: 'tap' | 'touch' | 'goal' | null;
   goalError: number | null;
   kick: KickKind | null;
@@ -26,6 +28,8 @@ export class ControlState {
   switchPlayer = false;
   quick = false;
   release = false;
+  megaTackle = false;
+  fightChoice: 'punch' | 'kick' | 'wrestle' | 'brawl' | 'back_down' | null = null;
   restart: 'tap' | 'touch' | 'goal' | null = null;
   goalError: number | null = null;
   kick: KickKind | null = null;
@@ -98,12 +102,14 @@ export class ControlState {
     if (this.keys.has('KeyL')) this.dive = true;
     if (this.keys.has('Tab')) this.switchPlayer = true;
     if (this.keys.has('Enter')) this.quick = true;
+    if (this.keys.has('KeyM')) this.megaTackle = true;
     if (this.primaryHeld && !this.primaryWas) this.primaryEdge = true;
     this.primaryWas = this.primaryHeld;
     this.keys.delete('KeyJ');
     this.keys.delete('KeyL');
     this.keys.delete('Tab');
     this.keys.delete('Enter');
+    this.keys.delete('KeyM');
   }
 
   private primaryWas = false;
@@ -124,6 +130,8 @@ export class ControlState {
       switchPlayer: this.switchPlayer,
       quick: this.quick,
       release: this.release,
+      megaTackle: this.megaTackle,
+      fightChoice: this.fightChoice,
       restart: this.restart,
       goalError: this.goalError,
       kick: this.kick,
@@ -135,6 +143,8 @@ export class ControlState {
     this.switchPlayer = false;
     this.quick = false;
     this.release = false;
+    this.megaTackle = false;
+    this.fightChoice = null;
     this.restart = null;
     this.goalError = null;
     this.kick = null;

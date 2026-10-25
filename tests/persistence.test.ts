@@ -4,14 +4,14 @@ import { buildFixtures, buildFinals, recordResult, regularComplete, standings } 
 
 describe('save migration', () => {
   it('rejects corrupt and future payloads', () => {
-    expect(parseSave(null).version).toBe(1);
+    expect(parseSave(null).version).toBe(2);
     expect(parseSave('{').settings.difficulty).toBe('club');
-    expect(parseSave(JSON.stringify({ version: 2, settings: { difficulty: 'rookie' } })).settings.difficulty).toBe('club');
+    expect(parseSave(JSON.stringify({ version: 3, settings: { difficulty: 'rookie' } })).settings.difficulty).toBe('club');
   });
 
   it('keeps a valid settings payload inside the allowed ranges', () => {
     const raw = JSON.stringify({
-      version: 1,
+      version: 2,
       settings: { difficulty: 'representative', halfMinutes: 40, clockScale: 8, music: 4, leftHanded: true },
       achievements: ['first-win', 12],
       history: [{ at: '2026-01-01', home: 'A', away: 'B', score: [8, 4], competition: false }],

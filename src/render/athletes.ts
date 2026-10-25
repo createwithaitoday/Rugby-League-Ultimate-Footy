@@ -6,19 +6,20 @@ const HAIR = ['#1b140e', '#3a2416', '#6a3e22', '#d7c4a3', '#111111'];
 const BOOTS = ['#141414', '#f4f4f4', '#c4552a', '#1d4e89'];
 
 function physique(role: Role, body: number): { height: number; bulk: number } {
+  // Full-size broadcast proportions (closer to console rugby athlete scale).
   const table: Record<Role, [number, number]> = {
-    prop: [1.88, 1.24],
-    hooker: [1.76, 1.04],
-    second_row: [1.94, 1.14],
-    lock: [1.86, 1.1],
-    halfback: [1.74, 0.94],
-    five_eighth: [1.8, 0.98],
-    centre: [1.84, 1.03],
-    wing: [1.83, 0.92],
-    fullback: [1.84, 0.99],
+    prop: [1.93, 1.38],
+    hooker: [1.8, 1.14],
+    second_row: [1.98, 1.26],
+    lock: [1.9, 1.2],
+    halfback: [1.78, 1.02],
+    five_eighth: [1.84, 1.08],
+    centre: [1.88, 1.14],
+    wing: [1.87, 1.02],
+    fullback: [1.88, 1.08],
   };
   const [height, bulk] = table[role];
-  const nudge = [0.98, 1, 1.05, 1.02][body % 4];
+  const nudge = [0.98, 1, 1.06, 1.03][body % 4];
   return { height, bulk: bulk * nudge };
 }
 
@@ -120,6 +121,23 @@ function poseFor(action: Action, travel: number, speed: number, time: number, ha
   }
   if (action === 'stumble') {
     return { lean: 0.6, twist: 0.5, crouch: 0.2, armL: 0.8, armR: -0.6, foreL: 0.4, foreR: 0.5, thighL: 0.5, thighR: -0.4, kneeL: 0.7, kneeR: 0.3, head: 0.2, hop: 0 };
+  }
+  if (action === 'mega_hit') {
+    return { lean: 1.55, twist: -0.35, crouch: 0.15, armL: -2.4, armR: -2.1, foreL: 0.2, foreR: 0.35, thighL: 1.1, thighR: -0.5, kneeL: 0.4, kneeR: 0.7, head: 0.55, hop: 0.08 };
+  }
+  if (action === 'injured') {
+    return { lean: 1.45, twist: 0.7, crouch: 0.7, armL: 0.9, armR: -1.2, foreL: 1.1, foreR: 0.6, thighL: 1.35, thighR: 0.9, kneeL: 1.4, kneeR: 1.1, head: 0.65, hop: -0.35 };
+  }
+  if (action === 'punch') {
+    const swing = Math.sin(time * 14);
+    return { lean: 0.35, twist: swing * 0.5, crouch: 0.12, armL: -0.4, armR: -2.2 + swing * 0.4, foreL: 0.7, foreR: 0.15, thighL: 0.4, thighR: -0.2, kneeL: 0.4, kneeR: 0.3, head: 0.1, hop: 0.02 };
+  }
+  if (action === 'wrestle') {
+    return { lean: 0.95, twist: Math.sin(time * 5) * 0.35, crouch: 0.35, armL: -1.5, armR: -1.5, foreL: 1.1, foreR: 1.1, thighL: 0.7, thighR: 0.5, kneeL: 0.8, kneeR: 0.7, head: 0.25, hop: 0 };
+  }
+  if (action === 'kick_fight') {
+    const swing = Math.max(0, Math.sin(time * 10));
+    return { lean: 0.2, twist: -0.4, crouch: 0.1, armL: 0.6, armR: -0.8, foreL: 0.4, foreR: 0.5, thighL: 0.2, thighR: -1.5 * swing, kneeL: 0.3, kneeR: 0.2 + swing, head: 0.05, hop: swing * 0.05 };
   }
   if (action === 'marker') {
     return { lean: 0.35, twist: 0, crouch: 0.18, armL: 0.45, armR: 0.45, foreL: 0.7, foreR: 0.7, thighL: 0.45, thighR: 0.45, kneeL: 0.55, kneeR: 0.55, head: 0.1, hop: 0 };
@@ -328,7 +346,8 @@ export class Athletes {
       const build = physique(p.role, p.look.body);
       const height = build.height;
       const bulk = build.bulk;
-      const s = height / 1.86;
+      // Visual scale pushed toward full-size console athletes on the pitch.
+      const s = (height / 1.72) * 1.08;
       this.position.set(x, pose.hop, z);
       this.quaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), facing);
       this.scale.set(s, s, s);

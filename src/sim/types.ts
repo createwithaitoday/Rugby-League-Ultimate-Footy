@@ -143,7 +143,12 @@ export type Action =
   | 'jump'
   | 'marker'
   | 'stumble'
-  | 'get_up';
+  | 'get_up'
+  | 'mega_hit'
+  | 'injured'
+  | 'punch'
+  | 'wrestle'
+  | 'kick_fight';
 
 export interface Decision {
   serial: number;
@@ -272,7 +277,13 @@ export type EventType =
   | 'charge_down'
   | 'hooter'
   | 'error'
-  | 'restart';
+  | 'restart'
+  | 'mega_tackle'
+  | 'illegal_tackle'
+  | 'blood_bin'
+  | 'fight'
+  | 'brawl'
+  | 'slow_mo';
 
 export interface MatchEvent {
   id: number;
@@ -317,6 +328,9 @@ export interface HumanInput {
   offload: boolean;
   switchPlayer: boolean;
   quickPlay: boolean;
+  /** Rare high-impact / illegal option. Only armed sometimes. */
+  megaTackle: boolean;
+  fightChoice: 'punch' | 'kick' | 'wrestle' | 'brawl' | 'back_down' | null;
   restartChoice: 'tap' | 'touch' | 'goal' | null;
   goalError: number | null;
   release: boolean;

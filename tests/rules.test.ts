@@ -351,7 +351,7 @@ describe('season table', () => {
 
 describe('saves', () => {
   it('rejects corrupt data and keeps a valid versioned save', () => {
-    expect(parseSave(null).version).toBe(1);
+    expect(parseSave(null).version).toBe(2);
     expect(parseSave('not json').settings.difficulty).toBe('club');
     expect(parseSave(JSON.stringify({ version: 99 })).history).toEqual([]);
     const save = freshSave();

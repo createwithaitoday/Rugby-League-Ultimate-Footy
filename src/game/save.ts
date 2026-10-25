@@ -55,7 +55,7 @@ export interface HistoryItem {
 }
 
 export interface SaveData {
-  version: 1;
+  version: 2;
   settings: Settings;
   season: SeasonState | null;
   career: CareerState | null;
@@ -63,7 +63,7 @@ export interface SaveData {
   achievements: string[];
 }
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export function defaultSettings(): Settings {
   return {
@@ -87,7 +87,7 @@ export function defaultSettings(): Settings {
 
 export function freshSave(): SaveData {
   return {
-    version: 1,
+    version: 2,
     settings: defaultSettings(),
     season: null,
     career: null,
@@ -174,9 +174,9 @@ export function parseSave(raw: string | null | undefined): SaveData {
     if (isRecord(parsed.season) && Array.isArray(parsed.season.teamIds) && Array.isArray(parsed.season.fixtures)) {
       base.season = {
         year: clampNum(parsed.season.year, 2020, 2100, 2026),
-        teamIds: parsed.season.teamIds.filter((id): id is string => typeof id === 'string').slice(0, 16),
+        teamIds: parsed.season.teamIds.filter((id): id is string => typeof id === 'string').slice(0, 20),
         userTeamId: typeof parsed.season.userTeamId === 'string' ? parsed.season.userTeamId : '',
-        fixtures: parsed.season.fixtures.filter(isFixture).slice(0, 80),
+        fixtures: parsed.season.fixtures.filter(isFixture).slice(0, 220),
       };
     }
     return base;

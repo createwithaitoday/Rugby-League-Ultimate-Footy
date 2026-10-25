@@ -1,0 +1,35 @@
+Mega Smash: Rugby League 27 — what was not finished (26 Oct 2026, Australia/Sydney)
+
+1) True Unity AAA graphics matching Rugby Nations 26
+   Why: This product is the existing Three.js/Capacitor game (com.ultimatefooty.national). There was no Unity rugby project. Unity 6000.6.7f1 is installed; a scaffold was created at C:\Users\Jye\MegaSmash-Rugby-League-27-Unity but Editor batchmode crashed during AssetDatabase init. Matching RN26 needs licensed mocap, stadium scans, skinned athletes, HDRP/URP art, and months of work. No RN26 assets or license are on this machine.
+   Need: Stable Unity Editor session, URP/HDRP packages, character/stadium art pipeline, and a multi-week port of src/sim into C#.
+
+2) Google Play review upload for version 1.0.0 (versionCode 2)
+   Why: Signed AAB was built at android/app/build/outputs/bundle/release/app-release.aab. Upload via smashlab-play@smashlab-lounge-b024.iam.gserviceaccount.com returned 403 PERMISSION_DENIED for package com.ultimatefooty.national. That service account is granted for SMASH LAB only (see smash-lab store/PLAY.md), not this rugby app (Play app id 4975315416532968875).
+   Need: In Lounge Lizard Play Console → Users and permissions, grant that service account Admin (or Release manager) on this app, OR a service-account JSON that already has androidpublisher access to com.ultimatefooty.national. Then re-run: node scripts/play-upload.mjs
+
+3) Content rating / listing change for blood + fighting
+   Why: Previous listing was sports without blood/violence questionnaire answers matching mega hits / fights. API listing title patch was not reached because edit insert failed on 403. Google may require an updated IARC questionnaire before approving blood/fight content.
+   Need: Same Play API access as (2), then update content rating answers and store graphics.
+
+4) Animated Google Play / launcher icons beyond static PNG/SVG
+   Why: Play Console adaptive icons and store listing icon uploads need API access (blocked). In-app icon.svg and icon-512.png were updated. Animated Play store icons are not supported as GIF by Play; only static assets + optional feature graphic.
+   Need: Play API access to upload store/icon-512.png and store/feature-graphic.png.
+
+5) Copying Rugby Nations 26 sizes/graphics literally
+   Why: RN26 is proprietary. Players were scaled to full-size broadcast proportions and materials/shadows pushed harder. Cannot copy RN26 meshes, textures, or animations.
+   Need: Licensed third-party athlete packs or custom art directed to that bar.
+
+6) “Published” as live on Google Play
+   Why: Previous 0.9.0 build was already In review. This 1.0.0 Mega Smash update could not be submitted without API permission (item 2). Publication after review is Google’s queue; managed publishing was already off for the prior release.
+   Need: Successful edit commit of versionCode 2, then Google approval.
+
+Done on this pass
+- Rename to Mega Smash: Rugby League 27 (app, Capacitor, Android strings, manifest, package.json)
+- 17 NRL city club names + jersey colours (Manly, Parramatta, etc.; no mascot names)
+- Full-size athletes, blood/impact FX, slow-mo, mega/illegal hit button, fight + all-in brawl UI
+- Intro promo loop on menu
+- Typecheck + 30 tests green
+- Production web build; desktop preview http://192.168.1.105:8741/ and :8742/
+- Signed AAB versionCode 2 / 1.0.0
+- Git commit + push attempted on the feature branch

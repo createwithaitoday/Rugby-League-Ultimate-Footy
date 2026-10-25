@@ -12,7 +12,7 @@ export interface FieldView {
   setStadium(info: StadiumInfo, quality: 'low' | 'medium' | 'high'): void;
   resize(width: number, height: number): void;
   punch(amount?: number): void;
-  startReplay(frames: Snapshot[]): void;
+  startReplay(frames: Snapshot[], duration?: number): void;
   skipReplay(): void;
   update(dt: number, match: Match | null, mode: CameraMode, showTen: boolean, menu: boolean): void;
   render(): void;

@@ -6,26 +6,26 @@
     <meta name="theme-color" content="#071018" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="Ultimate Footy" />
-    <meta name="description" content="Original 13-a-side rugby league. Meridian Cup." />
+    <meta name="apple-mobile-web-app-title" content="Mega Smash RL 27" />
+    <meta name="description" content="Mega Smash: Rugby League 27 — full-size contact, slow-mo, blood, fights, and mega hits." />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
-    <title>National Rugby League: Ultimate Footy</title>
+    <title>Mega Smash: Rugby League 27</title>
   </head>
   <body>
     <canvas id="view"></canvas>
     <p id="boot" hidden></p>
 
     <main id="ui">
-      <section id="screen-menu" class="panel">
-        <p class="eyebrow">Meridian Cup</p>
-        <h1>National Rugby League<br />Ultimate Footy</h1>
-        <p class="lede">Thirteen a side. Six-tackle sets. Play the ball, kick on the last, and defend your goal line.</p>
+      <section id="screen-menu" class="panel hero-panel">
+        <p class="eyebrow">Season 27</p>
+        <h1>Mega Smash<br />Rugby League 27</h1>
+        <p class="lede">Full-size athletes. Mega hits. Slow-mo carnage. Fights when tempers snap. City clubs. Real jersey colours.</p>
         <p id="gfx-note" class="note" hidden></p>
         <div class="stack">
           <button type="button" data-go="setup">Quick match</button>
           <button type="button" data-go="training">Training</button>
-          <button type="button" data-go="season">Meridian Cup</button>
+          <button type="button" data-go="season">City Cup</button>
           <button type="button" data-go="career">Career</button>
           <button type="button" class="ghost" data-go="howto">How to play</button>
           <button type="button" class="ghost" data-go="settings">Settings</button>
@@ -64,7 +64,7 @@
 
       <section id="screen-howto" class="panel wide" hidden>
         <p class="eyebrow">Laws in this game</p>
-        <h2>How Meridian Cup football works</h2>
+        <h2>How Mega Smash football works</h2>
         <div class="prose">
           <p>Each side has thirteen players on the field. A set is six tackles. After the sixth tackle the ball is handed over. A play-the-ball follows every completed tackle. The dummy half is usually the hooker.</p>
           <p>Passes must travel backwards or flat. A forward pass is a scrum to the other team. A knock-on is the same. Kicks are not knock-ons. The kicker cannot regather their own kick immediately.</p>
@@ -72,7 +72,8 @@
           <p>Conversions and penalty goals are worth 2. A field goal is worth 1 and stays in play if it misses. A kick into touch on the full is a penalty. A ball that bounces into touch restarts with a twenty-metre tap. A forty-twenty gives the kicking team the tap.</p>
           <p>Markers may stand at the ruck. Everyone else must retreat. Encroachment inside the referee’s margin is six again. The clock runs until the hooter, then the half ends at the next stoppage. Extra time is golden point.</p>
           <p>On attack, the stick moves the ball carrier. Up the screen is always the try line you are attacking, including after half-time. Pass, kick, sprint, and dive are the attacking buttons. On defence you move a defender, tackle, and switch to the next nearest teammate.</p>
-          <p>Keyboard: W A S D or arrows to run, Shift to sprint, J or Space to pass, F to tackle, K to kick, L to dive, Tab to switch, Enter to tap or play the ball, C to change camera, Esc to pause.</p>
+          <p>Keyboard: W A S D or arrows to run, Shift to sprint, J or Space to pass, F to tackle, M for Mega Hit when it lights up, K to kick, L to dive, Tab to switch, Enter to tap or play the ball, C to change camera, Esc to pause.</p>
+          <p>Mega Hit and illegal smash options appear only in short windows. Sometimes the referee misses it. Dominant contacts can drop into slow-mo with blood spray. Tempers can spark a punch-up, kick, wrestle, or an all-in brawl.</p>
         </div>
         <button type="button" class="ghost" data-go="menu">Back</button>
       </section>
@@ -134,7 +135,7 @@
         <p class="eyebrow">Privacy</p>
         <h2>What stays on this device</h2>
         <div class="prose">
-          <p>National Rugby League: Ultimate Footy does not ask you to create an account, sell your save, or send that save to a server.</p>
+          <p>Mega Smash: Rugby League 27 does not ask you to create an account, sell your save, or send that save to a server. City names and jersey colours are used for atmosphere. This is not an official NRL product.</p>
           <p>The Android app can show a Google AdMob banner on menus. That banner is hidden during a live match. The browser game does not load ads. The save stays on this device.</p>
           <p>Settings, the Meridian Cup season, career totals, match history, and achievements are stored in this app’s private storage under the names <code>meridian-league-save</code> and <code>meridian-league-save-backup</code>. A career name is whatever you type, and it never leaves the device.</p>
           <p>Clearing the app’s storage, or the browser site data, deletes that save. There is no cloud copy.</p>
@@ -144,7 +145,7 @@
       </section>
 
       <section id="screen-season" class="panel wide" hidden>
-        <p class="eyebrow">Meridian Cup</p>
+        <p class="eyebrow">City Cup</p>
         <h2>Season</h2>
         <p id="season-status" class="note"></p>
         <div id="season-body"></div>
@@ -200,6 +201,17 @@
         <div id="actions"></div>
       </div>
       <div id="kick-wheel" hidden></div>
+      <div id="fight-panel" hidden>
+        <p class="eyebrow">Temper</p>
+        <p id="fight-text">Fight</p>
+        <div class="row wrap">
+          <button type="button" data-fight="punch">Punch</button>
+          <button type="button" data-fight="kick">Kick</button>
+          <button type="button" data-fight="wrestle">Wrestle</button>
+          <button type="button" data-fight="brawl" class="mega">All-in brawl</button>
+          <button type="button" class="ghost" data-fight="back_down">Back down</button>
+        </div>
+      </div>
       <button type="button" id="btn-pause" aria-label="Pause">Pause</button>
     </div>
 

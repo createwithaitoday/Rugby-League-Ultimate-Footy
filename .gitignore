@@ -18,7 +18,11 @@ coverage
 *.jks
 credentials.json
 service-account*.json
+play-service-account.json
+*play-service-account*.json
 google-services.json
+android/keystore.properties
+android/local.properties
 
 # Generated store packages
 *.aab
